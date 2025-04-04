@@ -1,0 +1,159 @@
+.comic-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 1000;
+}
+
+.comic-container:hover .comic-overlay {
+    opacity: 1;
+}
+
+.comic-container {
+    position: relative;
+    display: inline-block;
+}
+
+.speech-bubble {
+    position: absolute;
+    border: 2px solid #4285f4;
+    border-radius: 5px;
+    background-color: rgba(66, 133, 244, 0.2);
+    z-index: 999;
+}
+
+.speech-bubble.active {
+    background-color: rgba(66, 133, 244, 0.5);
+}
+
+.dubber-ui {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    padding: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.dubber-ui-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    cursor: move;
+}
+
+.dubber-ui-close {
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.dubber-ui-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dubber-ui-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.dubber-ui-controls button {
+    padding: 5px 10px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.dubber-ui-controls button:hover {
+    background-color: #3367d6;
+}
+
+.dubber-ui-controls button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.dialogue-item {
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #eee;
+    border-radius: 3px;
+}
+
+.dialogue-speaker {
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.dialogue-text {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 5px;
+    resize: vertical;
+}
+
+.error-overlay {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.error-message {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+    color: white;
+}
+
+.error-retry {
+    font-size: 14px;
+    text-decoration: underline;
+    color: white;
+}
+
+/* Word highlighting */
+.highlight-container {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.highlight-word {
+    display: inline-block;
+    padding: 2px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.highlight-word.active {
+    background-color: #4285f4;
+    color: white;
+}
