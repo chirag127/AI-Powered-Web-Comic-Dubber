@@ -14,95 +14,119 @@ let uiContainer = null;
 // BubbleDetector class for speech bubble detection
 class BubbleDetector {
     constructor() {
-        this.cv = window.cv; // OpenCV.js instance
+        if (typeof cv === "undefined") {
+            throw new Error("OpenCV.js is not available");
+        }
+        this.cv = cv; // OpenCV.js instance
     }
 
     async detectBubbles(image) {
-        // Convert image to grayscale
-        let src = this.cv.imread(image);
-        let gray = new this.cv.Mat();
-        this.cv.cvtColor(src, gray, this.cv.COLOR_RGBA2GRAY);
-
-        // Apply threshold to get binary image
-        let binary = new this.cv.Mat();
-        this.cv.threshold(gray, binary, 200, 255, this.cv.THRESH_BINARY_INV);
-
-        // Find contours
-        let contours = new this.cv.MatVector();
-        let hierarchy = new this.cv.Mat();
-        this.cv.findContours(
-            binary,
-            contours,
-            hierarchy,
-            this.cv.RETR_EXTERNAL,
-            this.cv.CHAIN_APPROX_SIMPLE
-        );
-
-        // Filter contours to find speech bubbles
-        let bubbles = [];
-        for (let i = 0; i < contours.size(); ++i) {
-            let contour = contours.get(i);
-            let area = this.cv.contourArea(contour);
-            let perimeter = this.cv.arcLength(contour, true);
-
-            // Calculate circularity
-            let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
-
-            // Filter based on area and circularity
-            if (area > 1000 && circularity > 0.2) {
-                let rect = this.cv.boundingRect(contour);
-                bubbles.push({
-                    x: rect.x,
-                    y: rect.y,
-                    width: rect.width,
-                    height: rect.height,
-                    contour: contour,
-                });
+        try {
+            if (!this.cv) {
+                throw new Error("OpenCV.js is not initialized");
             }
+
+            // Convert image to grayscale
+            let src = this.cv.imread(image);
+            let gray = new this.cv.Mat();
+            this.cv.cvtColor(src, gray, this.cv.COLOR_RGBA2GRAY);
+
+            // Apply threshold to get binary image
+            let binary = new this.cv.Mat();
+            this.cv.threshold(
+                gray,
+                binary,
+                200,
+                255,
+                this.cv.THRESH_BINARY_INV
+            );
+
+            // Find contours
+            let contours = new this.cv.MatVector();
+            let hierarchy = new this.cv.Mat();
+            this.cv.findContours(
+                binary,
+                contours,
+                hierarchy,
+                this.cv.RETR_EXTERNAL,
+                this.cv.CHAIN_APPROX_SIMPLE
+            );
+
+            // Filter contours to find speech bubbles
+            let bubbles = [];
+            for (let i = 0; i < contours.size(); ++i) {
+                let contour = contours.get(i);
+                let area = this.cv.contourArea(contour);
+                let perimeter = this.cv.arcLength(contour, true);
+
+                // Calculate circularity
+                let circularity =
+                    (4 * Math.PI * area) / (perimeter * perimeter);
+
+                // Filter based on area and circularity
+                if (area > 1000 && circularity > 0.2) {
+                    let rect = this.cv.boundingRect(contour);
+                    bubbles.push({
+                        x: rect.x,
+                        y: rect.y,
+                        width: rect.width,
+                        height: rect.height,
+                        contour: contour,
+                    });
+                }
+            }
+
+            // Clean up
+            src.delete();
+            gray.delete();
+            binary.delete();
+            contours.delete();
+            hierarchy.delete();
+
+            return bubbles;
+        } catch (error) {
+            console.error("Error in detectBubbles:", error);
+            throw error;
         }
-
-        // Clean up
-        src.delete();
-        gray.delete();
-        binary.delete();
-        contours.delete();
-        hierarchy.delete();
-
-        return bubbles;
     }
 }
 
 // TextExtractor class for OCR
 class TextExtractor {
     constructor() {
+        if (typeof Tesseract === "undefined") {
+            throw new Error("Tesseract.js is not available");
+        }
         // Initialize Tesseract worker
         this.initWorker();
     }
 
     async initWorker() {
         try {
-            if (window.Tesseract) {
-                // For Tesseract.js v4.x
-                if (window.Tesseract.createWorker) {
-                    this.worker = await window.Tesseract.createWorker();
-                    await this.worker.loadLanguage("eng");
-                    await this.worker.initialize("eng");
-                    console.log("Tesseract worker initialized successfully");
-                } else {
-                    // For older versions of Tesseract.js
-                    this.tesseract = window.Tesseract;
-                    console.log("Using legacy Tesseract.js API");
-                }
+            // For Tesseract.js v4.x
+            if (Tesseract.createWorker) {
+                console.log("Using Tesseract.js v4.x API");
+                this.worker = await Tesseract.createWorker();
+                await this.worker.loadLanguage("eng");
+                await this.worker.initialize("eng");
+                console.log("Tesseract worker initialized successfully");
             } else {
-                console.error("Tesseract.js not found");
+                // For older versions of Tesseract.js
+                console.log("Using legacy Tesseract.js API");
+                this.tesseract = Tesseract;
             }
         } catch (error) {
             console.error("Failed to initialize Tesseract worker:", error);
+            throw error;
         }
     }
 
     async extractText(image, bubble) {
         try {
+            if (!this.worker && !this.tesseract) {
+                throw new Error("Tesseract not initialized");
+            }
+
             // Create a canvas to crop the bubble area
             let canvas = document.createElement("canvas");
             let ctx = canvas.getContext("2d");
@@ -139,10 +163,10 @@ class TextExtractor {
                 throw new Error("Tesseract not initialized");
             }
 
-            return text;
+            return text || "No text detected";
         } catch (error) {
             console.error("Text extraction failed:", error);
-            return "Text extraction failed";
+            return `Text extraction failed: ${error.message}`;
         }
     }
 }
@@ -541,24 +565,47 @@ function clearTextCorrectionUI() {
 // Detect speech bubbles in the current image
 async function detectBubbles() {
     try {
-        if (!window.cv || !window.Tesseract) {
-            console.log("Libraries not loaded yet, initializing extension...");
-            await initializeExtension();
+        // Check if libraries are available
+        if (typeof cv === "undefined" || typeof Tesseract === "undefined") {
+            console.log("Libraries not available, trying to initialize...");
+            // Try to initialize the extension
+            const initialized = await initializeExtension();
+            if (!initialized) {
+                return {
+                    success: false,
+                    error: "Failed to load required libraries. Please refresh the page and try again.",
+                };
+            }
         }
 
-        if (!bubbleDetector || !textExtractor) {
-            console.error("Components not initialized");
-            return {
-                success: false,
-                error: "Components not initialized. Please try again.",
-            };
+        // Initialize components if not already initialized
+        if (!bubbleDetector || !textExtractor || !audioPlayer) {
+            console.log("Components not initialized, initializing now...");
+            try {
+                // Create components
+                if (!bubbleDetector) bubbleDetector = new BubbleDetector();
+                if (!textExtractor) textExtractor = new TextExtractor();
+                if (!audioPlayer) audioPlayer = new AudioPlayer();
+
+                // Wait for Tesseract worker to initialize
+                await textExtractor.initWorker();
+
+                console.log("Components initialized successfully");
+            } catch (error) {
+                console.error("Failed to initialize components:", error);
+                return {
+                    success: false,
+                    error: `Failed to initialize components: ${error.message}. Please refresh the page and try again.`,
+                };
+            }
         }
 
         if (comicImages.length === 0) {
             // Try to find images again
+            console.log("Searching for comic images on the page...");
             comicImages = Array.from(document.querySelectorAll("img")).filter(
                 (img) => {
-                    return img.width > 200 && img.height > 200;
+                    return img.width > 200 && img.height > 200 && img.complete;
                 }
             );
 
@@ -569,6 +616,7 @@ async function detectBubbles() {
                     error: "No comic images found on the page. Try on a page with comic images.",
                 };
             }
+            console.log(`Found ${comicImages.length} potential comic images`);
         }
 
         // Get the current image
@@ -715,51 +763,107 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true; // Indicates we'll respond asynchronously
 });
 
-// Load required libraries
+// Load libraries dynamically
 function loadLibraries() {
     return new Promise((resolve, reject) => {
-        // Load OpenCV.js
+        // First, check if libraries are already loaded
+        if (typeof cv !== "undefined" && typeof Tesseract !== "undefined") {
+            console.log("Libraries already loaded");
+            resolve(true);
+            return;
+        }
+
+        // Create a script element for OpenCV.js
         const opencvScript = document.createElement("script");
         opencvScript.src = chrome.runtime.getURL("lib/opencv.js");
-        opencvScript.onload = () => {
+        opencvScript.type = "text/javascript";
+        opencvScript.onload = function () {
             console.log("OpenCV.js loaded successfully");
-            // Load Tesseract.js after OpenCV.js is loaded
+
+            // After OpenCV.js is loaded, load Tesseract.js
             const tesseractScript = document.createElement("script");
             tesseractScript.src = chrome.runtime.getURL("lib/tesseract.min.js");
-            tesseractScript.onload = () => {
+            tesseractScript.type = "text/javascript";
+            tesseractScript.onload = function () {
                 console.log("Tesseract.js loaded successfully");
-                resolve();
+
+                // Wait a moment for libraries to initialize
+                setTimeout(() => {
+                    if (
+                        typeof cv !== "undefined" &&
+                        typeof Tesseract !== "undefined"
+                    ) {
+                        console.log("Libraries initialized successfully");
+                        resolve(true);
+                    } else {
+                        console.error("Libraries failed to initialize");
+                        reject(new Error("Libraries failed to initialize"));
+                    }
+                }, 500);
             };
-            tesseractScript.onerror = (error) => {
+            tesseractScript.onerror = function (error) {
                 console.error("Failed to load Tesseract.js:", error);
-                reject(error);
+                reject(new Error("Failed to load Tesseract.js"));
             };
             document.head.appendChild(tesseractScript);
         };
-        opencvScript.onerror = (error) => {
+        opencvScript.onerror = function (error) {
             console.error("Failed to load OpenCV.js:", error);
-            reject(error);
+            reject(new Error("Failed to load OpenCV.js"));
         };
         document.head.appendChild(opencvScript);
+    });
+}
+
+// Check if libraries are available
+function checkLibraries() {
+    return new Promise((resolve, reject) => {
+        // Check if OpenCV.js is loaded
+        if (typeof cv !== "undefined") {
+            console.log("OpenCV.js is available");
+
+            // Check if Tesseract.js is loaded
+            if (typeof Tesseract !== "undefined") {
+                console.log("Tesseract.js is available");
+                resolve(true);
+            } else {
+                console.error("Tesseract.js is not available");
+                reject(new Error("Tesseract.js is not available"));
+            }
+        } else {
+            console.error("OpenCV.js is not available");
+            reject(new Error("OpenCV.js is not available"));
+        }
     });
 }
 
 // Initialize the extension
 async function initializeExtension() {
     try {
-        // Load libraries
+        // First, try to load the libraries
         await loadLibraries();
         console.log("Libraries loaded, initializing components...");
 
         // Wait a moment for libraries to initialize
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Initialize components
-        initComponents();
+        // Verify libraries are available
+        await checkLibraries();
+        console.log("Libraries verified, initializing components...");
 
-        console.log("Extension initialized successfully");
+        // Initialize components
+        const result = initComponents();
+
+        if (result) {
+            console.log("Extension initialized successfully");
+            return true;
+        } else {
+            console.error("Failed to initialize components");
+            return false;
+        }
     } catch (error) {
         console.error("Failed to initialize extension:", error);
+        return false;
     }
 }
 
