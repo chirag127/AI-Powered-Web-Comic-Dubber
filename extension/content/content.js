@@ -304,26 +304,26 @@ async function initializeComicImages() {
 }
 
 /**
- * Detect speech bubbles in the next batch of comic images
- * @returns {Promise<Object>} Object containing bubbles and batch information
+ * Detect speech bubbles in the next comic image
+ * @returns {Promise<Object>} Object containing bubbles and page information
  */
 async function detectSpeechBubbles() {
     return new Promise((resolve, reject) => {
         try {
             // Initialize comic images if not already done
-            if (comicImages.length === 0 || currentBatchStart === -1) {
+            if (comicImages.length === 0 || currentImageIndex === -1) {
                 initializeComicImages()
                     .then(() => {
-                        // Start with the first batch
-                        currentBatchStart = 0;
-                        processBatch(resolve, reject);
+                        // Start with the first image
+                        currentImageIndex = 0;
+                        processCurrentImage(resolve, reject);
                     })
                     .catch((error) => reject(error));
             } else {
-                // Move to the next batch
-                currentBatchStart =
-                    (currentBatchStart + BATCH_SIZE) % comicImages.length;
-                processBatch(resolve, reject);
+                // Move to the next image
+                currentImageIndex =
+                    (currentImageIndex + 1) % comicImages.length;
+                processCurrentImage(resolve, reject);
             }
         } catch (error) {
             reject(error);
@@ -332,64 +332,38 @@ async function detectSpeechBubbles() {
 }
 
 /**
- * Process a batch of comic images
+ * Process the current comic image
  * @param {Function} resolve - Promise resolve function
  * @param {Function} reject - Promise reject function
  */
-function processBatch(resolve, reject) {
+function processCurrentImage(resolve, reject) {
     try {
-        // Calculate the end index for this batch (not exceeding array length)
-        const batchEnd = Math.min(
-            currentBatchStart + BATCH_SIZE,
-            comicImages.length
-        );
-        const currentBatchSize = batchEnd - currentBatchStart;
-
         console.log(
-            `Processing batch: images ${
-                currentBatchStart + 1
-            } to ${batchEnd} of ${comicImages.length}`
+            `Processing image ${currentImageIndex + 1} of ${comicImages.length}`
         );
 
-        // Process all images in the batch
-        const batchPromises = [];
-        const allBubbles = [];
-
-        for (let i = currentBatchStart; i < batchEnd; i++) {
-            batchPromises.push(
-                processImage(i).then((bubbles) => {
-                    // Add all bubbles from this image to our collection
-                    allBubbles.push(...bubbles);
-                })
-            );
-        }
-
-        // Wait for all images in the batch to be processed
-        Promise.all(batchPromises)
-            .then(() => {
+        // Process the current image
+        processImage(currentImageIndex)
+            .then((bubbles) => {
                 console.log(
-                    `Completed batch processing. Found ${allBubbles.length} bubbles in ${currentBatchSize} images`
+                    `Detected ${bubbles.length} bubbles in image ${
+                        currentImageIndex + 1
+                    }`
                 );
 
-                // Highlight all bubbles
-                highlightBubbles(allBubbles);
+                // Highlight the bubbles
+                highlightBubbles(bubbles);
 
-                // Calculate if there are more batches to process
-                const hasNextBatch = batchEnd < comicImages.length;
+                // Calculate if there are more images to process
+                const hasNextPage = comicImages.length > 1;
 
-                // Return bubbles along with batch information
+                // Return bubbles along with page information
                 resolve({
-                    bubbles: allBubbles,
+                    bubbles: bubbles,
                     pageInfo: {
-                        currentBatch:
-                            Math.floor(currentBatchStart / BATCH_SIZE) + 1,
-                        totalBatches: Math.ceil(
-                            comicImages.length / BATCH_SIZE
-                        ),
-                        currentStartPage: currentBatchStart + 1,
-                        currentEndPage: batchEnd,
+                        currentPage: currentImageIndex + 1,
                         totalPages: comicImages.length,
-                        hasNextBatch: hasNextBatch,
+                        hasNextPage: hasNextPage,
                     },
                 });
             })

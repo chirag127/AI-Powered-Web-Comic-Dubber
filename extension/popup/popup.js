@@ -205,11 +205,8 @@ function setupEventListeners() {
     }
 }
 
-// Batch information
-let currentBatch = 0;
-let totalBatches = 0;
-let currentStartPage = 0;
-let currentEndPage = 0;
+// Page information
+let currentPage = 0;
 let totalPages = 0;
 
 /**
@@ -231,17 +228,14 @@ function detectSpeechBubbles() {
         if (response && response.success) {
             detectedBubbles = response.bubbles;
 
-            // Update batch information
+            // Update page information
             if (response.pageInfo) {
-                currentBatch = response.pageInfo.currentBatch;
-                totalBatches = response.pageInfo.totalBatches;
-                currentStartPage = response.pageInfo.currentStartPage;
-                currentEndPage = response.pageInfo.currentEndPage;
+                currentPage = response.pageInfo.currentPage;
                 totalPages = response.pageInfo.totalPages;
 
-                // Update button text based on whether there are more batches
-                if (response.pageInfo.hasNextBatch) {
-                    detectButton.textContent = `Next Batch (${currentBatch}/${totalBatches})`;
+                // Update button text based on whether there are more pages
+                if (response.pageInfo.hasNextPage) {
+                    detectButton.textContent = `Next Page (${currentPage}/${totalPages})`;
                 } else {
                     detectButton.textContent = "Detect Speech Bubbles";
                 }
@@ -249,8 +243,8 @@ function detectSpeechBubbles() {
                 detectButton.textContent = "Detect Speech Bubbles";
             }
 
-            detectionStatus.textContent = `Batch ${currentBatch}/${totalBatches} processed (Pages ${currentStartPage}-${currentEndPage} of ${totalPages})`;
-            bubbleCount.textContent = `Found ${detectedBubbles.length} speech bubbles in this batch`;
+            detectionStatus.textContent = `Page ${currentPage}/${totalPages} processed`;
+            bubbleCount.textContent = `Found ${detectedBubbles.length} speech bubbles on this page`;
 
             // Enable playback controls
             playButton.disabled = false;
