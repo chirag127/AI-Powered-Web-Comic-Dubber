@@ -6,7 +6,7 @@ A browser extension that detects speech bubbles in web comics and generates AI-b
 
 -   Speech bubble detection using computer vision
 -   Text extraction with OCR
--   AI voice generation for detected dialogue
+-   AI voice generation for detected dialogue using Web Speech API
 -   Character voice customization
 -   Seamless browser extension experience
 
@@ -18,54 +18,8 @@ A browser extension that detects speech bubbles in web comics and generates AI-b
     -   `content/` - Content scripts for bubble detection and playback
     -   `background/` - Background scripts for API communication
     -   `lib/` - Shared libraries and utilities
--   `backend/` - Backend services
-    -   `server.js` - Main server file
-    -   `routes/` - API routes
-    -   `controllers/` - Business logic
-    -   `models/` - Database models
-    -   `services/` - External service integrations (OCR, TTS)
-    -   `config/` - Configuration files
-    -   `utils/` - Utility functions
 
 ## Setup and Installation
-
-### Backend Setup (Optional)
-
-The backend is optional for basic functionality, but required for saving user preferences across devices.
-
-1. Navigate to the backend directory:
-
-    ```
-    cd backend
-    ```
-
-2. Install dependencies:
-
-    ```
-    npm install
-    ```
-
-3. Create a `.env` file based on `.env.example` and add your configuration:
-
-    ```
-    # Server Configuration
-    PORT=3000
-    NODE_ENV=development
-
-    # MongoDB Connection
-    MONGODB_URI=mongodb://localhost:27017/comic-dubber
-    # For MongoDB Atlas: mongodb+srv://<username>:<password>@cluster.mongodb.net/comic-dubber
-
-    # JWT Secret for Authentication
-    JWT_SECRET=your_jwt_secret_key
-    JWT_EXPIRES_IN=7d
-
-    ```
-
-4. Start the server:
-    ```
-    npm start
-    ```
 
 ### Extension Setup
 
@@ -75,6 +29,8 @@ The backend is optional for basic functionality, but required for saving user pr
     - Download [OpenCV.js](https://docs.opencv.org/3.4.0/opencv.js) and save as `extension/lib/opencv.js`
 
 2. Create icon files in `extension/popup/images/` (icon16.png, icon48.png, icon128.png)
+
+    - You can use the included `extension/generate_icons.html` file to create these icons
 
 3. Open Chrome and navigate to `chrome://extensions/`
 
@@ -94,13 +50,11 @@ The backend is optional for basic functionality, but required for saving user pr
 
 ## Technologies Used
 
--   Frontend: JavaScript, HTML, CSS
--   Backend: Node.js, Express.js
--   Database: MongoDB
+-   JavaScript, HTML, CSS
 -   Computer Vision: OpenCV.js for bubble detection
 -   OCR: Tesseract.js for text extraction
--   Future Enhancements: Improved speech bubble detection using machine learning
 -   Voice Synthesis: Web Speech API for text-to-speech
+-   Chrome Storage API for saving preferences
 
 ## How It Works
 
@@ -119,7 +73,7 @@ The backend is optional for basic functionality, but required for saving user pr
 -   Speech bubble detection may not work perfectly on all comics due to varying art styles
 -   OCR accuracy depends on the font and clarity of the text
 -   Character detection is basic and may require manual assignment
--   Free API usage limits may apply
+-   Web Speech API has limited voice options compared to premium services
 
 ## Future Enhancements
 

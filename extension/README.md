@@ -4,21 +4,24 @@ This browser extension detects speech bubbles in web comics, extracts text using
 
 ## Features
 
-- Speech bubble detection using computer vision
-- Text extraction with OCR
-- AI voice generation for detected dialogue
-- Character voice customization
-- Seamless browser extension experience
+-   Speech bubble detection using computer vision
+-   Text extraction with OCR
+-   AI voice generation for detected dialogue using Web Speech API
+-   Character voice customization with preferences saved using Chrome Storage API
+-   Seamless browser extension experience
 
 ## Installation
 
 ### Manual Installation
 
 1. Download the required libraries:
-   - Download [Tesseract.js](https://github.com/naptha/tesseract.js/tree/master/dist) and save as `lib/tesseract.min.js`
-   - Download [OpenCV.js](https://docs.opencv.org/3.4.0/opencv.js) and save as `lib/opencv.js`
+
+    - Download [Tesseract.js](https://github.com/naptha/tesseract.js/tree/master/dist) and save as `lib/tesseract.min.js`
+    - Download [OpenCV.js](https://docs.opencv.org/3.4.0/opencv.js) and save as `lib/opencv.js`
 
 2. Create icon files in `popup/images/` (icon16.png, icon48.png, icon128.png)
+
+    - You can use the included `generate_icons.html` file to create these icons
 
 3. Open Chrome and navigate to `chrome://extensions/`
 
@@ -38,11 +41,11 @@ This browser extension detects speech bubbles in web comics, extracts text using
 
 ## Structure
 
-- `manifest.json` - Extension configuration
-- `popup/` - Extension popup UI
-- `content/` - Content scripts for bubble detection and playback
-- `background/` - Background scripts for API communication
-- `lib/` - Shared libraries and utilities
+-   `manifest.json` - Extension configuration
+-   `popup/` - Extension popup UI
+-   `content/` - Content scripts for bubble detection and playback
+-   `background/` - Background scripts for managing extension state
+-   `lib/` - Shared libraries and utilities
 
 ## Development
 
