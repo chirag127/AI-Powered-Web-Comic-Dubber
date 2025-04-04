@@ -210,28 +210,59 @@ class AudioPlayer {
 
 // Initialize when OpenCV and Tesseract are loaded
 function initComponents() {
-    if (window.cv && window.Tesseract && !bubbleDetector) {
-        bubbleDetector = new BubbleDetector();
-        textExtractor = new TextExtractor();
-        audioPlayer = new AudioPlayer();
+    try {
+        if (window.cv && window.Tesseract) {
+            console.log("Initializing components...");
 
-        // Find all images on the page that could be comic panels
-        comicImages = Array.from(document.querySelectorAll("img")).filter(
-            (img) => {
-                // Filter images that are likely to be comic panels (based on size, etc.)
-                return img.width > 200 && img.height > 200;
+            if (!bubbleDetector) {
+                bubbleDetector = new BubbleDetector();
+                console.log("BubbleDetector initialized");
             }
-        );
+
+            if (!textExtractor) {
+                textExtractor = new TextExtractor();
+                console.log("TextExtractor initialized");
+            }
+
+            if (!audioPlayer) {
+                audioPlayer = new AudioPlayer();
+                console.log("AudioPlayer initialized");
+            }
+
+            // Find all images on the page that could be comic panels
+            comicImages = Array.from(document.querySelectorAll("img")).filter(
+                (img) => {
+                    // Filter images that are likely to be comic panels (based on size, etc.)
+                    return img.width > 200 && img.height > 200;
+                }
+            );
+
+            console.log(`Found ${comicImages.length} potential comic images`);
+            return true;
+        } else {
+            console.warn(
+                "Libraries not loaded yet, cannot initialize components"
+            );
+            return false;
+        }
+    } catch (error) {
+        console.error("Error initializing components:", error);
+        return false;
     }
 }
 
 // Check if components are loaded
 function checkComponentsLoaded() {
-    if (window.cv && window.Tesseract) {
-        initComponents();
-        return true;
+    try {
+        if (window.cv && window.Tesseract) {
+            const result = initComponents();
+            return result;
+        }
+        return false;
+    } catch (error) {
+        console.error("Error checking if components are loaded:", error);
+        return false;
     }
-    return false;
 }
 
 // Create a draggable UI element for the extension
@@ -321,6 +352,16 @@ function createDraggableUI() {
     controls.appendChild(nextButton);
     container.appendChild(controls);
 
+    // Add status message area
+    const statusArea = document.createElement("div");
+    statusArea.id = "comic-dubber-status";
+    statusArea.style.marginTop = "16px";
+    statusArea.style.padding = "8px";
+    statusArea.style.backgroundColor = "#f8f9fa";
+    statusArea.style.borderRadius = "4px";
+    statusArea.style.display = "none";
+    container.appendChild(statusArea);
+
     // Add text correction area
     const textCorrection = document.createElement("div");
     textCorrection.id = "comic-dubber-text-correction";
@@ -355,37 +396,103 @@ function createDraggableUI() {
         isDragging = false;
     });
 
+    // Function to show status messages
+    function showStatus(message, isError = false) {
+        const statusArea = document.getElementById("comic-dubber-status");
+        if (statusArea) {
+            statusArea.textContent = message;
+            statusArea.style.display = "block";
+            statusArea.style.backgroundColor = isError ? "#ffebee" : "#f1f8e9";
+            statusArea.style.color = isError ? "#c62828" : "#33691e";
+        }
+    }
+
     // Add event listeners for buttons
     detectButton.addEventListener("click", () => {
-        detectBubbles().then((response) => {
-            if (response && response.success) {
-                updateTextCorrectionUI(response.texts);
-            }
-        });
+        showStatus("Detecting speech bubbles and extracting text...");
+        detectButton.disabled = true;
+        detectButton.style.opacity = "0.7";
+
+        detectBubbles()
+            .then((response) => {
+                detectButton.disabled = false;
+                detectButton.style.opacity = "1";
+
+                if (response && response.success) {
+                    showStatus(
+                        `Found ${response.bubbles.length} speech bubbles with text!`
+                    );
+                    updateTextCorrectionUI(response.texts);
+                } else {
+                    showStatus(
+                        response.error || "Unknown error occurred",
+                        true
+                    );
+                }
+            })
+            .catch((error) => {
+                detectButton.disabled = false;
+                detectButton.style.opacity = "1";
+                showStatus(`Error: ${error.message}`, true);
+            });
     });
 
     let isPlaying = false;
     playButton.addEventListener("click", () => {
         if (isPlaying) {
-            playAudio({ command: "pause" });
-            playButton.textContent = "Play Audio";
-            isPlaying = false;
+            playAudio({ command: "pause" })
+                .then(() => {
+                    playButton.textContent = "Play Audio";
+                    isPlaying = false;
+                    showStatus("Audio playback paused");
+                })
+                .catch((error) => {
+                    showStatus(`Error pausing audio: ${error.message}`, true);
+                });
         } else {
+            if (texts.length === 0) {
+                showStatus(
+                    "No text to play. Please detect speech bubbles first.",
+                    true
+                );
+                return;
+            }
+
+            showStatus("Playing audio...");
             playAudio({
                 command: "play",
                 texts: texts,
                 voiceSettings: {}, // TODO: Implement voice settings
-            });
-            playButton.textContent = "Pause Audio";
-            isPlaying = true;
+            })
+                .then(() => {
+                    playButton.textContent = "Pause Audio";
+                    isPlaying = true;
+                })
+                .catch((error) => {
+                    showStatus(`Error playing audio: ${error.message}`, true);
+                });
         }
     });
 
     nextButton.addEventListener("click", () => {
-        nextPage();
-        isPlaying = false;
-        playButton.textContent = "Play Audio";
-        clearTextCorrectionUI();
+        if (comicImages.length <= 1) {
+            showStatus("No more images to navigate to.", true);
+            return;
+        }
+
+        const result = nextPage();
+        if (result.success) {
+            isPlaying = false;
+            playButton.textContent = "Play Audio";
+            clearTextCorrectionUI();
+            showStatus(
+                `Navigated to image ${currentImageIndex + 1}/${
+                    comicImages.length
+                }`
+            );
+        } else {
+            showStatus(result.error || "Failed to navigate to next page", true);
+        }
     });
 
     // Add to the page
