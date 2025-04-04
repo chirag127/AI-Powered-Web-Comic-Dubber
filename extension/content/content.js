@@ -126,15 +126,34 @@ class BubbleDetector {
 // TextExtractor class for OCR
 class TextExtractor {
     constructor() {
-        if (typeof Tesseract === "undefined") {
+        // Check if we're using simplified mode
+        this.useSimplifiedMode =
+            localStorage.getItem("comicDubber_useSimplifiedMode") === "true";
+
+        // Only check for Tesseract if not in simplified mode
+        if (!this.useSimplifiedMode && typeof Tesseract === "undefined") {
             throw new Error("Tesseract.js is not available");
         }
-        // Initialize Tesseract worker
-        this.initWorker();
+
+        // Initialize Tesseract worker if not in simplified mode
+        if (!this.useSimplifiedMode) {
+            this.initWorker();
+        } else {
+            console.log("Using simplified text extraction (no OCR)");
+        }
     }
 
     async initWorker() {
         try {
+            if (typeof Tesseract === "undefined") {
+                console.log(
+                    "Tesseract.js not available, using simplified text extraction"
+                );
+                this.useSimplifiedMode = true;
+                localStorage.setItem("comicDubber_useSimplifiedMode", "true");
+                return;
+            }
+
             // For Tesseract.js v4.x
             if (Tesseract.createWorker) {
                 console.log("Using Tesseract.js v4.x API");
@@ -149,16 +168,14 @@ class TextExtractor {
             }
         } catch (error) {
             console.error("Failed to initialize Tesseract worker:", error);
-            throw error;
+            console.log("Falling back to simplified text extraction");
+            this.useSimplifiedMode = true;
+            localStorage.setItem("comicDubber_useSimplifiedMode", "true");
         }
     }
 
     async extractText(image, bubble) {
         try {
-            if (!this.worker && !this.tesseract) {
-                throw new Error("Tesseract not initialized");
-            }
-
             // Create a canvas to crop the bubble area
             let canvas = document.createElement("canvas");
             let ctx = canvas.getContext("2d");
@@ -178,6 +195,19 @@ class TextExtractor {
                 bubble.height
             );
 
+            // If in simplified mode, return a placeholder text
+            if (this.useSimplifiedMode) {
+                return "[Text detected in bubble - OCR disabled in simplified mode]";
+            }
+
+            // Check if Tesseract is initialized
+            if (!this.worker && !this.tesseract) {
+                console.warn(
+                    "Tesseract not initialized, using placeholder text"
+                );
+                return "[Text detected in bubble - OCR not available]";
+            }
+
             // Extract text using Tesseract.js
             let text = "";
 
@@ -192,13 +222,13 @@ class TextExtractor {
                 });
                 text = result.data.text.trim();
             } else {
-                throw new Error("Tesseract not initialized");
+                return "[Text detected in bubble - OCR not available]";
             }
 
             return text || "No text detected";
         } catch (error) {
             console.error("Text extraction failed:", error);
-            return `Text extraction failed: ${error.message}`;
+            return `[Text extraction failed: ${error.message}]`;
         }
     }
 }
@@ -425,14 +455,67 @@ function createDraggableUI() {
         isWebtoons ||
         document.querySelector('meta[http-equiv="Content-Security-Policy"]');
 
+    // Check if simplified mode is active
+    const useSimplifiedMode =
+        localStorage.getItem("comicDubber_useSimplifiedMode") === "true";
+
+    // Check if Tesseract.js is available
+    const tesseractAvailable = typeof Tesseract !== "undefined";
+
     // Show initial status message
-    if (hasStrictCSP) {
+    if (useSimplifiedMode) {
+        let statusMessage = "Running in simplified mode";
+        if (!tesseractAvailable) {
+            statusMessage +=
+                " (OCR disabled). Speech bubbles will be detected but text won't be extracted.";
+        } else {
+            statusMessage +=
+                " (without OpenCV). Detection may be less accurate but more compatible with this site.";
+        }
+
+        statusArea.textContent = statusMessage;
+        statusArea.style.display = "block";
+        statusArea.style.backgroundColor = "#e8f5e9";
+        statusArea.style.color = "#2e7d32";
+        statusArea.style.border = "1px solid #a5d6a7";
+
+        // Add a reset button
+        const resetButton = document.createElement("button");
+        resetButton.textContent = "Switch to Advanced Mode";
+        resetButton.style.marginTop = "8px";
+        resetButton.style.padding = "4px 8px";
+        resetButton.style.fontSize = "12px";
+        resetButton.addEventListener("click", () => {
+            localStorage.removeItem("comicDubber_useSimplifiedMode");
+            statusArea.textContent =
+                "Switched to advanced mode. Please try detecting bubbles again.";
+        });
+        statusArea.appendChild(document.createElement("br"));
+        statusArea.appendChild(resetButton);
+    } else if (hasStrictCSP) {
         statusArea.textContent =
             "Warning: This website has security restrictions that may prevent the extension from working properly. Consider trying on XKCD.com or GoComics.com instead.";
         statusArea.style.display = "block";
         statusArea.style.backgroundColor = "#fff8e1";
         statusArea.style.color = "#f57f17";
         statusArea.style.border = "1px solid #ffe082";
+
+        // Add a simplified mode button
+        const simplifiedButton = document.createElement("button");
+        simplifiedButton.textContent = "Try Simplified Mode";
+        simplifiedButton.style.marginTop = "8px";
+        simplifiedButton.style.padding = "4px 8px";
+        simplifiedButton.style.fontSize = "12px";
+        simplifiedButton.addEventListener("click", () => {
+            localStorage.setItem("comicDubber_useSimplifiedMode", "true");
+            statusArea.textContent =
+                "Switched to simplified mode. Please try detecting bubbles again.";
+            statusArea.style.backgroundColor = "#e8f5e9";
+            statusArea.style.color = "#2e7d32";
+            statusArea.style.border = "1px solid #a5d6a7";
+        });
+        statusArea.appendChild(document.createElement("br"));
+        statusArea.appendChild(simplifiedButton);
     } else {
         statusArea.textContent =
             "Ready to detect speech bubbles. Click 'Detect Speech Bubbles' to start.";
@@ -521,9 +604,24 @@ function createDraggableUI() {
                 detectButton.style.opacity = "1";
 
                 if (response && response.success) {
-                    showStatus(
-                        `Success! Found ${response.bubbles.length} speech bubbles with text. You can now play the audio or correct the text below.`
-                    );
+                    // Check if we're in simplified mode without OCR
+                    const useSimplifiedMode =
+                        localStorage.getItem(
+                            "comicDubber_useSimplifiedMode"
+                        ) === "true";
+                    const tesseractAvailable = typeof Tesseract !== "undefined";
+                    const ocrDisabled =
+                        useSimplifiedMode && !tesseractAvailable;
+
+                    if (ocrDisabled) {
+                        showStatus(
+                            `Success! Found ${response.bubbles.length} speech bubbles. OCR is disabled in simplified mode, so placeholder text will be used.`
+                        );
+                    } else {
+                        showStatus(
+                            `Success! Found ${response.bubbles.length} speech bubbles with text. You can now play the audio or correct the text below.`
+                        );
+                    }
                     updateTextCorrectionUI(response.texts);
                 } else {
                     // Check if it's a Webtoons or CSP error
@@ -678,8 +776,15 @@ function clearTextCorrectionUI() {
 // Detect speech bubbles in the current image
 async function detectBubbles() {
     try {
+        // Check if we should use simplified mode (no OpenCV)
+        const useSimplifiedMode =
+            localStorage.getItem("comicDubber_useSimplifiedMode") === "true";
+
         // Check if libraries are available
-        if (typeof cv === "undefined" || typeof Tesseract === "undefined") {
+        if (
+            !useSimplifiedMode &&
+            (typeof cv === "undefined" || typeof Tesseract === "undefined")
+        ) {
             console.log("Libraries not available, trying to load them...");
             // Try to load the libraries directly
             try {
@@ -689,33 +794,132 @@ async function detectBubbles() {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             } catch (error) {
                 console.error("Failed to load libraries:", error);
-                return {
-                    success: false,
-                    error: "Failed to load required libraries. Please refresh the page and try again.",
-                };
+
+                // Ask user if they want to try simplified mode
+                if (
+                    confirm(
+                        "The extension couldn't load required libraries for advanced bubble detection. Would you like to try simplified mode instead? (This will use basic image processing but may be less accurate)"
+                    )
+                ) {
+                    localStorage.setItem(
+                        "comicDubber_useSimplifiedMode",
+                        "true"
+                    );
+                    return detectBubbles(); // Retry with simplified mode
+                } else {
+                    return {
+                        success: false,
+                        error: "Failed to load required libraries. Please refresh the page and try again.",
+                    };
+                }
             }
 
             // Verify libraries are available after loading
             if (typeof cv === "undefined" || typeof Tesseract === "undefined") {
                 console.error("Libraries still not available after loading");
-                return {
-                    success: false,
-                    error: "Failed to initialize libraries. Please try on a different page or refresh and try again.",
-                };
+
+                // Ask user if they want to try simplified mode
+                if (
+                    confirm(
+                        "The extension couldn't initialize required libraries. Would you like to try simplified mode instead? (This will use basic image processing but may be less accurate)"
+                    )
+                ) {
+                    localStorage.setItem(
+                        "comicDubber_useSimplifiedMode",
+                        "true"
+                    );
+                    return detectBubbles(); // Retry with simplified mode
+                } else {
+                    return {
+                        success: false,
+                        error: "Failed to initialize libraries. Please try on a different page or refresh and try again.",
+                    };
+                }
             }
         }
 
+        // We already have the simplified mode value from above, no need to get it again
+
         // Initialize components if not already initialized
-        if (!bubbleDetector || !textExtractor || !audioPlayer) {
+        if (
+            !textExtractor ||
+            !audioPlayer ||
+            (!bubbleDetector && !useSimplifiedMode)
+        ) {
             console.log("Components not initialized, initializing now...");
             try {
                 // Create components
-                if (!bubbleDetector) bubbleDetector = new BubbleDetector();
-                if (!textExtractor) textExtractor = new TextExtractor();
-                if (!audioPlayer) audioPlayer = new AudioPlayer();
+                if (!useSimplifiedMode && !bubbleDetector) {
+                    try {
+                        bubbleDetector = new BubbleDetector();
+                    } catch (error) {
+                        console.error(
+                            "Failed to initialize BubbleDetector:",
+                            error
+                        );
+                        if (
+                            confirm(
+                                "Advanced bubble detection failed. Would you like to try simplified mode instead?"
+                            )
+                        ) {
+                            localStorage.setItem(
+                                "comicDubber_useSimplifiedMode",
+                                "true"
+                            );
+                            useSimplifiedMode = true;
+                            // Continue with simplified mode
+                        } else {
+                            return {
+                                success: false,
+                                error: `Failed to initialize bubble detector: ${error.message}. Please try on a different page.`,
+                            };
+                        }
+                    }
+                }
 
-                // Wait for Tesseract worker to initialize
-                await textExtractor.initWorker();
+                // Initialize text extractor with error handling
+                if (!textExtractor) {
+                    try {
+                        textExtractor = new TextExtractor();
+                    } catch (error) {
+                        console.error(
+                            "Failed to initialize TextExtractor:",
+                            error
+                        );
+                        if (
+                            error.message.includes(
+                                "Tesseract.js is not available"
+                            )
+                        ) {
+                            if (
+                                confirm(
+                                    "Text recognition (OCR) is not available. Would you like to continue in simplified mode without OCR?"
+                                )
+                            ) {
+                                localStorage.setItem(
+                                    "comicDubber_useSimplifiedMode",
+                                    "true"
+                                );
+                                useSimplifiedMode = true;
+                                // Try again with simplified mode
+                                textExtractor = new TextExtractor();
+                            } else {
+                                return {
+                                    success: false,
+                                    error: `Failed to initialize text extractor: ${error.message}. Please try on a different page.`,
+                                };
+                            }
+                        } else {
+                            return {
+                                success: false,
+                                error: `Failed to initialize text extractor: ${error.message}. Please refresh the page and try again.`,
+                            };
+                        }
+                    }
+                }
+
+                // Initialize audio player
+                if (!audioPlayer) audioPlayer = new AudioPlayer();
 
                 console.log("Components initialized successfully");
             } catch (error) {
@@ -788,7 +992,15 @@ async function detectBubbles() {
 
         // Detect bubbles
         console.log("Detecting speech bubbles...");
-        bubbles = await bubbleDetector.detectBubbles(image);
+
+        if (useSimplifiedMode) {
+            // Use simplified bubble detection (without OpenCV)
+            bubbles = await detectBubblesSimplified(image);
+        } else {
+            // Use advanced bubble detection with OpenCV
+            bubbles = await bubbleDetector.detectBubbles(image);
+        }
+
         console.log(`Found ${bubbles.length} potential speech bubbles`);
 
         if (bubbles.length === 0) {
@@ -899,6 +1111,119 @@ function nextPage() {
     currentImageIndex = (currentImageIndex + 1) % comicImages.length;
 
     return { success: true };
+}
+
+// Simplified bubble detection without OpenCV
+async function detectBubblesSimplified(image) {
+    try {
+        console.log("Using simplified bubble detection");
+
+        // Create a canvas to analyze the image
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0, image.width, image.height);
+
+        // Get image data
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Simple approach: look for white areas that might be speech bubbles
+        // This is a very basic approach and won't work well for all comics
+        const bubbles = [];
+        const gridSize = 20; // Divide the image into a grid
+        const threshold = 240; // Brightness threshold for white areas
+
+        // Scan the image in a grid pattern
+        for (let y = 0; y < canvas.height; y += gridSize) {
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                // Check if this grid cell is mostly white
+                let whitePixels = 0;
+                let totalPixels = 0;
+
+                // Sample pixels in this grid cell
+                for (
+                    let dy = 0;
+                    dy < gridSize && y + dy < canvas.height;
+                    dy++
+                ) {
+                    for (
+                        let dx = 0;
+                        dx < gridSize && x + dx < canvas.width;
+                        dx++
+                    ) {
+                        const pixelIndex =
+                            ((y + dy) * canvas.width + (x + dx)) * 4;
+                        const r = data[pixelIndex];
+                        const g = data[pixelIndex + 1];
+                        const b = data[pixelIndex + 2];
+
+                        // Calculate brightness
+                        const brightness = (r + g + b) / 3;
+
+                        if (brightness > threshold) {
+                            whitePixels++;
+                        }
+                        totalPixels++;
+                    }
+                }
+
+                // If this cell is mostly white, consider it part of a bubble
+                if (whitePixels / totalPixels > 0.8) {
+                    // Check if this cell can be merged with an existing bubble
+                    let merged = false;
+                    for (const bubble of bubbles) {
+                        // If this cell is adjacent to an existing bubble, merge them
+                        if (
+                            Math.abs(x - (bubble.x + bubble.width)) <
+                                gridSize * 2 &&
+                            Math.abs(y - (bubble.y + bubble.height)) <
+                                gridSize * 2
+                        ) {
+                            // Expand the bubble to include this cell
+                            const newRight = Math.max(
+                                bubble.x + bubble.width,
+                                x + gridSize
+                            );
+                            const newBottom = Math.max(
+                                bubble.y + bubble.height,
+                                y + gridSize
+                            );
+                            bubble.width = newRight - bubble.x;
+                            bubble.height = newBottom - bubble.y;
+                            merged = true;
+                            break;
+                        }
+                    }
+
+                    // If not merged, create a new bubble
+                    if (!merged) {
+                        bubbles.push({
+                            x: x,
+                            y: y,
+                            width: gridSize,
+                            height: gridSize,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Filter out bubbles that are too small
+        const filteredBubbles = bubbles.filter(
+            (bubble) =>
+                bubble.width > gridSize * 2 && bubble.height > gridSize * 2
+        );
+
+        console.log(
+            `Simplified detection found ${filteredBubbles.length} potential bubbles`
+        );
+        return filteredBubbles;
+    } catch (error) {
+        console.error("Error in simplified bubble detection:", error);
+        return [];
+    }
 }
 
 // Listen for messages from the background script

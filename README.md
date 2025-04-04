@@ -9,6 +9,7 @@ A browser extension that detects speech bubbles in web comics and generates AI-b
 -   AI voice generation for detected dialogue using Web Speech API
 -   Character voice customization
 -   Seamless browser extension experience
+-   Simplified mode for compatibility with more websites
 
 ## Project Structure
 

@@ -8,17 +8,19 @@ This error occurs when the extension can't load the required libraries (OpenCV.j
 
 ### Solutions:
 
-1. **Refresh the page**: Sometimes a simple page refresh can resolve loading issues.
+1. **Try Simplified Mode**: When you see this error, the extension will offer you the option to switch to "Simplified Mode". This mode doesn't require OpenCV.js and should work on most websites, though the bubble detection may be less accurate.
 
-2. **Try on a different website**: Some websites have strict Content Security Policies (CSP) that prevent external scripts from loading. Try the extension on a different website.
+2. **Refresh the page**: Sometimes a simple page refresh can resolve loading issues.
 
-3. **Check your internet connection**: The libraries are quite large and may fail to load on slow connections.
+3. **Try on a different website**: Some websites have strict Content Security Policies (CSP) that prevent external scripts from loading. Try the extension on a different website.
 
-4. **Disable other extensions**: Other extensions might be interfering with the loading process.
+4. **Check your internet connection**: The libraries are quite large and may fail to load on slow connections.
 
-5. **Try in incognito mode**: This can help identify if other extensions or browser settings are causing the issue.
+5. **Disable other extensions**: Other extensions might be interfering with the loading process.
 
-6. **Clear browser cache**: Go to your browser settings and clear the cache, then try again.
+6. **Try in incognito mode**: This can help identify if other extensions or browser settings are causing the issue.
+
+7. **Clear browser cache**: Go to your browser settings and clear the cache, then try again.
 
 ## "This website has security restrictions that prevent loading required libraries"
 
@@ -94,6 +96,20 @@ This error occurs when there's a conflict with OpenCV.js, typically because the 
 2. **Refresh the page**: Sometimes refreshing the page and then using the extension can resolve temporary conflicts.
 
 3. **Why this happens**: The binding error occurs when OpenCV.js tries to register internal functions that are already registered by another instance of the library on the page. This is a technical limitation and not a bug in the extension.
+
+## "Failed to initialize components: Tesseract.js is not available"
+
+This error occurs when the extension can't load or initialize Tesseract.js, which is needed for text recognition (OCR).
+
+### Solutions:
+
+1. **Try Simplified Mode**: When you see this error, the extension will offer you the option to continue in simplified mode without OCR. In this mode, the extension will detect speech bubbles but won't be able to extract the actual text.
+
+2. **Refresh the page**: Sometimes a simple page refresh can resolve loading issues.
+
+3. **Try on a different website**: Some websites have strict Content Security Policies (CSP) that prevent external scripts from loading. Try the extension on a different website.
+
+4. **Why this happens**: Tesseract.js is a large library that may be blocked by some websites' security policies or may fail to load on slow connections.
 
 ## General Troubleshooting Steps
 
