@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Comic Dubber</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AI Comic Dubber</h1>
+      <div class="logo">🎭</div>
+    </header>
+    
+    <!-- Login/Register Form (shown when not logged in) -->
+    <div id="auth-container" class="section">
+      <div class="tabs">
+        <button id="login-tab" class="tab-button active">Login</button>
+        <button id="register-tab" class="tab-button">Register</button>
+      </div>
+      
+      <div id="login-form" class="form">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password">
+        </div>
+        <button id="login-button" class="primary-button">Login</button>
+        <div id="login-error" class="error-message"></div>
+      </div>
+      
+      <div id="register-form" class="form" style="display: none;">
+        <div class="form-group">
+          <label for="register-username">Username</label>
+          <input type="text" id="register-username" placeholder="Choose a username">
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email</label>
+          <input type="email" id="register-email" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+          <label for="register-password">Password</label>
+          <input type="password" id="register-password" placeholder="Choose a password">
+        </div>
+        <button id="register-button" class="primary-button">Register</button>
+        <div id="register-error" class="error-message"></div>
+      </div>
+    </div>
+    
+    <!-- Main Controls (shown when logged in) -->
+    <div id="main-container" class="section" style="display: none;">
+      <div class="user-info">
+        <span id="username-display">User</span>
+        <button id="logout-button" class="small-button">Logout</button>
+      </div>
+      
+      <div class="controls">
+        <button id="detect-button" class="primary-button">Detect Speech Bubbles</button>
+        <button id="settings-button" class="secondary-button">Settings</button>
+      </div>
+      
+      <div class="status-message" id="status-message"></div>
+    </div>
+    
+    <!-- Settings Panel -->
+    <div id="settings-panel" class="section" style="display: none;">
+      <h2>Settings</h2>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="autoplay-setting" checked>
+          Autoplay after detection
+        </label>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="highlight-setting" checked>
+          Highlight speech bubbles
+        </label>
+      </div>
+      
+      <div class="form-group">
+        <label for="speed-setting">Playback Speed</label>
+        <div class="range-container">
+          <input type="range" id="speed-setting" min="0.5" max="2" step="0.1" value="1">
+          <span id="speed-value">1.0x</span>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="provider-setting">Default Voice Provider</label>
+        <select id="provider-setting">
+          <option value="elevenlabs">ElevenLabs</option>
+          <option value="google">Google</option>
+          <option value="amazon">Amazon Polly</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="default-voice-setting">Default Voice</label>
+        <select id="default-voice-setting">
+          <option value="">Loading voices...</option>
+        </select>
+      </div>
+      
+      <div class="character-voices">
+        <h3>Character Voice Mapping</h3>
+        <div id="character-list">
+          <!-- Character voice mappings will be added here -->
+          <div class="empty-state">No character voices configured yet</div>
+        </div>
+        
+        <button id="add-character-button" class="secondary-button">Add Character</button>
+      </div>
+      
+      <div class="button-row">
+        <button id="save-settings-button" class="primary-button">Save Settings</button>
+        <button id="back-button" class="secondary-button">Back</button>
+      </div>
+    </div>
+    
+    <!-- Add Character Panel -->
+    <div id="add-character-panel" class="section" style="display: none;">
+      <h2>Add Character Voice</h2>
+      
+      <div class="form-group">
+        <label for="character-name">Character Name</label>
+        <input type="text" id="character-name" placeholder="Enter character name">
+      </div>
+      
+      <div class="form-group">
+        <label for="comic-source">Comic Source (optional)</label>
+        <input type="text" id="comic-source" placeholder="e.g., xkcd, Penny Arcade">
+      </div>
+      
+      <div class="form-group">
+        <label for="character-provider">Voice Provider</label>
+        <select id="character-provider">
+          <option value="elevenlabs">ElevenLabs</option>
+          <option value="google">Google</option>
+          <option value="amazon">Amazon Polly</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="character-voice">Voice</label>
+        <select id="character-voice">
+          <option value="">Loading voices...</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="pitch-setting">Pitch Adjustment</label>
+        <div class="range-container">
+          <input type="range" id="pitch-setting" min="-10" max="10" step="1" value="0">
+          <span id="pitch-value">0</span>
+        </div>
+      </div>
+      
+      <div class="button-row">
+        <button id="save-character-button" class="primary-button">Save Character</button>
+        <button id="cancel-character-button" class="secondary-button">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

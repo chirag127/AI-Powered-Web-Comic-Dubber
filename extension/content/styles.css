@@ -1,0 +1,145 @@
+/* Comic Dubber Styles */
+
+.comic-dubber-controls {
+  font-family: Arial, sans-serif;
+  color: white;
+  user-select: none;
+  transition: opacity 0.3s ease;
+}
+
+.comic-dubber-controls:hover {
+  opacity: 1;
+}
+
+.comic-dubber-controls button {
+  transition: background-color 0.2s ease;
+}
+
+.comic-dubber-controls button:hover {
+  filter: brightness(1.1);
+}
+
+.comic-dubber-controls button:active {
+  filter: brightness(0.9);
+}
+
+.comic-dubber-bubble-highlight {
+  pointer-events: none;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* Settings panel */
+.comic-dubber-settings {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 8px;
+  padding: 20px;
+  z-index: 10001;
+  width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  display: none;
+}
+
+.comic-dubber-settings h2 {
+  color: white;
+  margin-top: 0;
+  font-size: 18px;
+}
+
+.comic-dubber-settings label {
+  display: block;
+  margin: 10px 0 5px;
+  color: white;
+}
+
+.comic-dubber-settings input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.comic-dubber-settings input[type="range"] {
+  width: 100%;
+}
+
+.comic-dubber-settings select {
+  width: 100%;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.comic-dubber-settings button {
+  margin-top: 15px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  background: #2196F3;
+  color: white;
+  cursor: pointer;
+}
+
+.comic-dubber-settings .close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+/* Character voice mapping */
+.comic-dubber-character-mapping {
+  margin-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 15px;
+}
+
+.comic-dubber-character-item {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comic-dubber-character-item:last-child {
+  border-bottom: none;
+}
+
+/* Loading indicator */
+.comic-dubber-loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  z-index: 10002;
+  display: none;
+}
+
+.comic-dubber-loading::after {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: comic-dubber-spin 1s linear infinite;
+}
+
+@keyframes comic-dubber-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
