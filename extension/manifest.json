@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AI-Powered Web Comic Dubber",
   "version": "1.0.0",
-  "description": "Detects speech bubbles in web comics and generates AI-based voiceovers",
+  "description": "Detects speech bubbles in web comics and generates AI-based voiceovers for the dialogue",
   "permissions": [
     "activeTab",
     "storage",
@@ -14,9 +14,9 @@
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
+      "16": "popup/images/icon16.png",
+      "48": "popup/images/icon48.png",
+      "128": "popup/images/icon128.png"
     }
   },
   "background": {
@@ -25,13 +25,21 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/bubble-detector.js", "content/ocr.js", "content/audio-player.js"],
-      "css": ["content/styles.css"]
+      "js": [
+        "lib/tesseract.min.js",
+        "lib/opencv.js",
+        "lib/responsive-voice.js",
+        "content/bubble-detector.js",
+        "content/ocr-processor.js",
+        "content/voice-player.js",
+        "content/content.js"
+      ],
+      "css": ["content/content.css"]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/*"],
+      "resources": ["lib/*", "content/*"],
       "matches": ["<all_urls>"]
     }
   ]
