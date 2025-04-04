@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Icons</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Icon Generator</h1>
+  <p>Right-click on each canvas and select "Save image as..." to save the icons.</p>
+  
+  <h2>16x16 Icon</h2>
+  <canvas id="icon16" width="16" height="16"></canvas>
+  
+  <h2>48x48 Icon</h2>
+  <canvas id="icon48" width="48" height="48"></canvas>
+  
+  <h2>128x128 Icon</h2>
+  <canvas id="icon128" width="128" height="128"></canvas>
+  
+  <script>
+    // Function to draw icon
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = '#4285f4';
+      ctx.fillRect(0, 0, size, size);
+      
+      // Speech bubble
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size*0.35, 0, Math.PI*2);
+      ctx.fill();
+      
+      // Speech bubble tail
+      ctx.beginPath();
+      ctx.moveTo(size*0.65, size*0.65);
+      ctx.lineTo(size*0.8, size*0.8);
+      ctx.lineTo(size*0.55, size*0.7);
+      ctx.fill();
+      
+      // Sound waves
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = size*0.05;
+      
+      // First wave
+      ctx.beginPath();
+      ctx.arc(size*0.5, size*0.5, size*0.5, -Math.PI*0.3, Math.PI*0.3);
+      ctx.stroke();
+      
+      // Second wave
+      ctx.beginPath();
+      ctx.arc(size*0.5, size*0.5, size*0.6, -Math.PI*0.2, Math.PI*0.2);
+      ctx.stroke();
+    }
+    
+    // Draw icons
+    drawIcon(document.getElementById('icon16'), 16);
+    drawIcon(document.getElementById('icon48'), 48);
+    drawIcon(document.getElementById('icon128'), 128);
+  </script>
+</body>
+</html>
