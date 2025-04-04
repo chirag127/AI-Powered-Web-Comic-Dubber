@@ -41,13 +41,22 @@ A browser extension that detects speech bubbles in web comics and generates AI-b
 ## Usage
 
 1. Navigate to a web comic page (e.g., [XKCD](https://xkcd.com/), [Penny Arcade](https://www.penny-arcade.com/), etc.)
-2. Click the extension icon to open the popup
-3. Click "Detect Speech Bubbles" to analyze the first page/panel
+2. Click the extension icon to open the draggable UI
+3. Click "Detect Speech Bubbles" to analyze the current page/panel
 4. The extension will highlight detected speech bubbles and extract text
-5. Click "Next Page" to process additional pages/panels one at a time
-6. Use the playback controls to listen to the dialogue from the current page
-7. Customize character voices in the settings panel
-8. You can manually correct any OCR errors in the text correction section
+5. You can manually correct any OCR errors in the text correction section
+6. Click "Play Audio" to listen to the dialogue
+7. Click "Next Page" to process additional pages/panels
+
+## Troubleshooting
+
+If you encounter issues with the extension, please refer to the [Troubleshooting Guide](extension/TROUBLESHOOTING.md) for solutions to common problems.
+
+### Common Issues
+
+-   **"Failed to load required libraries"**: This may occur due to browser security settings or slow internet connections. Try refreshing the page or using the extension on a different website.
+-   **"No comic images found"**: Make sure you're on a page with comic images and that they're fully loaded.
+-   **"No speech bubbles detected"**: Try on a comic with clearer, more defined speech bubbles.
 
 ## Technologies Used
 

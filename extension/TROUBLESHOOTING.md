@@ -2,6 +2,24 @@
 
 If you're experiencing issues with the AI-Powered Web Comic Dubber extension, here are some common problems and their solutions:
 
+## "Failed to load required libraries. Please refresh the page and try again."
+
+This error occurs when the extension can't load the required libraries (OpenCV.js and Tesseract.js) needed for image processing and text recognition.
+
+### Solutions:
+
+1. **Refresh the page**: Sometimes a simple page refresh can resolve loading issues.
+
+2. **Try on a different website**: Some websites have strict Content Security Policies (CSP) that prevent external scripts from loading. Try the extension on a different website.
+
+3. **Check your internet connection**: The libraries are quite large and may fail to load on slow connections.
+
+4. **Disable other extensions**: Other extensions might be interfering with the loading process.
+
+5. **Try in incognito mode**: This can help identify if other extensions or browser settings are causing the issue.
+
+6. **Clear browser cache**: Go to your browser settings and clear the cache, then try again.
+
 ## "Components not initialized. Please try again."
 
 This error occurs when the extension can't properly initialize the required components (BubbleDetector, TextExtractor, or AudioPlayer).
@@ -61,6 +79,7 @@ This error occurs when the OCR (Optical Character Recognition) fails to extract 
 5. **Reinstall the extension**: Sometimes a fresh installation can resolve issues.
 
 If you continue to experience problems, please report the issue with as much detail as possible, including:
-- The URL of the comic page you're trying to use
-- Any error messages from the console
-- Screenshots of what you're seeing
+
+-   The URL of the comic page you're trying to use
+-   Any error messages from the console
+-   Screenshots of what you're seeing

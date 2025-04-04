@@ -383,7 +383,16 @@ function createDraggableUI() {
     statusArea.style.padding = "8px";
     statusArea.style.backgroundColor = "#f8f9fa";
     statusArea.style.borderRadius = "4px";
-    statusArea.style.display = "none";
+    statusArea.style.border = "1px solid #ddd";
+    statusArea.style.fontSize = "14px";
+    statusArea.style.lineHeight = "1.4";
+
+    // Show initial status message
+    statusArea.textContent =
+        "Ready to detect speech bubbles. Click 'Detect Speech Bubbles' to start.";
+    statusArea.style.display = "block";
+    statusArea.style.color = "#333";
+
     container.appendChild(statusArea);
 
     // Add text correction area
@@ -421,21 +430,43 @@ function createDraggableUI() {
     });
 
     // Function to show status messages
-    function showStatus(message, isError = false) {
+    function showStatus(message, isError = false, isWarning = false) {
         const statusArea = document.getElementById("comic-dubber-status");
         if (statusArea) {
             statusArea.textContent = message;
             statusArea.style.display = "block";
-            statusArea.style.backgroundColor = isError ? "#ffebee" : "#f1f8e9";
-            statusArea.style.color = isError ? "#c62828" : "#33691e";
+
+            if (isError) {
+                statusArea.style.backgroundColor = "#ffebee";
+                statusArea.style.color = "#c62828";
+                statusArea.style.border = "1px solid #ef9a9a";
+            } else if (isWarning) {
+                statusArea.style.backgroundColor = "#fff8e1";
+                statusArea.style.color = "#f57f17";
+                statusArea.style.border = "1px solid #ffe082";
+            } else {
+                statusArea.style.backgroundColor = "#f1f8e9";
+                statusArea.style.color = "#33691e";
+                statusArea.style.border = "1px solid #c5e1a5";
+            }
+
+            // Scroll the status area into view
+            statusArea.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
     }
 
     // Add event listeners for buttons
     detectButton.addEventListener("click", () => {
-        showStatus("Detecting speech bubbles and extracting text...");
+        showStatus("Loading libraries and detecting speech bubbles...");
         detectButton.disabled = true;
         detectButton.style.opacity = "0.7";
+
+        // First check if libraries are loaded
+        const librariesLoaded =
+            typeof cv !== "undefined" && typeof Tesseract !== "undefined";
+        if (!librariesLoaded) {
+            showStatus("Loading required libraries...", false, true);
+        }
 
         detectBubbles()
             .then((response) => {
@@ -444,20 +475,34 @@ function createDraggableUI() {
 
                 if (response && response.success) {
                     showStatus(
-                        `Found ${response.bubbles.length} speech bubbles with text!`
+                        `Success! Found ${response.bubbles.length} speech bubbles with text. You can now play the audio or correct the text below.`
                     );
                     updateTextCorrectionUI(response.texts);
                 } else {
-                    showStatus(
-                        response.error || "Unknown error occurred",
-                        true
-                    );
+                    // Check if it's a library loading error
+                    if (
+                        response.error &&
+                        response.error.includes("libraries")
+                    ) {
+                        showStatus(
+                            `${response.error} This may be due to browser security settings or a slow connection.`,
+                            true
+                        );
+                    } else {
+                        showStatus(
+                            response.error || "Unknown error occurred",
+                            true
+                        );
+                    }
                 }
             })
             .catch((error) => {
                 detectButton.disabled = false;
                 detectButton.style.opacity = "1";
-                showStatus(`Error: ${error.message}`, true);
+                showStatus(
+                    `Error: ${error.message}. Please refresh the page and try again.`,
+                    true
+                );
             });
     });
 
@@ -567,13 +612,27 @@ async function detectBubbles() {
     try {
         // Check if libraries are available
         if (typeof cv === "undefined" || typeof Tesseract === "undefined") {
-            console.log("Libraries not available, trying to initialize...");
-            // Try to initialize the extension
-            const initialized = await initializeExtension();
-            if (!initialized) {
+            console.log("Libraries not available, trying to load them...");
+            // Try to load the libraries directly
+            try {
+                await loadLibraries();
+                console.log("Libraries loaded successfully");
+                // Wait a moment for libraries to initialize
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error("Failed to load libraries:", error);
                 return {
                     success: false,
                     error: "Failed to load required libraries. Please refresh the page and try again.",
+                };
+            }
+
+            // Verify libraries are available after loading
+            if (typeof cv === "undefined" || typeof Tesseract === "undefined") {
+                console.error("Libraries still not available after loading");
+                return {
+                    success: false,
+                    error: "Failed to initialize libraries. Please try on a different page or refresh and try again.",
                 };
             }
         }
@@ -600,20 +659,50 @@ async function detectBubbles() {
             }
         }
 
+        // Check if we're on a comic page
         if (comicImages.length === 0) {
             // Try to find images again
             console.log("Searching for comic images on the page...");
-            comicImages = Array.from(document.querySelectorAll("img")).filter(
-                (img) => {
-                    return img.width > 200 && img.height > 200 && img.complete;
-                }
-            );
+
+            // Get all images on the page
+            const allImages = Array.from(document.querySelectorAll("img"));
+            console.log(`Found ${allImages.length} total images on the page`);
+
+            // Filter for potential comic images
+            comicImages = allImages.filter((img) => {
+                return (
+                    img.width > 200 &&
+                    img.height > 200 &&
+                    img.complete &&
+                    img.naturalWidth > 0
+                );
+            });
 
             if (comicImages.length === 0) {
                 console.error("No comic images found on the page");
+
+                // Check if there are any images at all
+                if (allImages.length === 0) {
+                    return {
+                        success: false,
+                        error: "No images found on this page. Please try on a page with comic images.",
+                    };
+                }
+
+                // Check if images are still loading
+                const incompleteImages = allImages.filter(
+                    (img) => !img.complete || img.naturalWidth === 0
+                );
+                if (incompleteImages.length > 0) {
+                    return {
+                        success: false,
+                        error: "Images are still loading. Please wait a moment and try again.",
+                    };
+                }
+
                 return {
                     success: false,
-                    error: "No comic images found on the page. Try on a page with comic images.",
+                    error: "No suitable comic images found on this page. Try on a page with larger comic images.",
                 };
             }
             console.log(`Found ${comicImages.length} potential comic images`);
