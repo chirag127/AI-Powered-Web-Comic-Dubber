@@ -298,7 +298,11 @@ function populateTextCorrectionList(bubbles) {
         item.className = "text-correction-item";
 
         const label = document.createElement("p");
-        label.textContent = `Bubble ${index + 1}:`;
+        // Add confidence indicator to the label
+        const confidenceIndicator = bubble.confidence === "high" ? "✓ " : "? ";
+        label.textContent = `${confidenceIndicator}Bubble ${index + 1}:`;
+        // Add color based on confidence
+        label.style.color = bubble.confidence === "high" ? "green" : "orange";
 
         const textarea = document.createElement("textarea");
         textarea.value = bubble.text;

@@ -24,6 +24,19 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+// Listen for browser action clicks (extension icon)
+chrome.action.onClicked.addListener((tab) => {
+    // Send a message to the content script to toggle the UI
+    chrome.tabs.sendMessage(tab.id, { action: "toggleUI" }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error("Error toggling UI:", chrome.runtime.lastError);
+            return;
+        }
+
+        console.log("UI toggled:", response);
+    });
+});
+
 // Listen for messages from content scripts or popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Background script received message:", message);

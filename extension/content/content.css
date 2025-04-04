@@ -1,80 +1,461 @@
 /**
  * AI-Powered Web Comic Dubber - Content CSS
- * 
- * Styles for the content script elements
+ *
+ * Styles for the content script elements and injected UI
  */
 
 #comic-dubber-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 9999;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
 }
 
 .comic-dubber-highlight {
-  position: absolute;
-  border: 2px solid rgba(255, 0, 0, 0.7);
-  border-radius: 15px;
-  background-color: rgba(255, 255, 0, 0.2);
-  z-index: 10000;
-  pointer-events: none;
-  transition: all 0.3s ease;
+    position: absolute;
+    border: 2px solid rgba(255, 0, 0, 0.7);
+    border-radius: 15px;
+    background-color: rgba(255, 255, 0, 0.2);
+    z-index: 10000;
+    pointer-events: none;
+    transition: all 0.3s ease;
 }
 
 .comic-dubber-highlight.active {
-  border: 3px solid rgba(0, 255, 0, 0.9);
-  background-color: rgba(0, 255, 0, 0.3);
+    border: 3px solid rgba(0, 255, 0, 0.9);
+    background-color: rgba(0, 255, 0, 0.3);
 }
 
 .comic-dubber-text {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 5px;
-  border-radius: 5px;
-  font-size: 12px;
-  max-width: 200px;
-  display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    max-width: 200px;
+    display: none;
 }
 
 .comic-dubber-controls {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px;
-  border-radius: 5px;
-  z-index: 10001;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
 .comic-dubber-controls button {
-  background-color: #4CAF50;
-  border: none;
-  color: white;
-  padding: 5px 10px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 14px;
-  margin: 2px;
-  cursor: pointer;
-  border-radius: 3px;
+    background-color: #4caf50;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 2px;
+    cursor: pointer;
+    border-radius: 3px;
 }
 
 .comic-dubber-controls button:hover {
-  background-color: #45a049;
+    background-color: #45a049;
 }
 
 .comic-dubber-controls button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+/* Styles for the draggable UI */
+.comic-dubber-ui {
+    position: fixed;
+    top: 50px;
+    right: 50px;
+    width: 350px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 2147483647; /* Maximum z-index */
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    overflow: hidden;
+    transition: height 0.3s ease;
+    max-height: 600px;
+}
+
+.comic-dubber-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #4285f4;
+    color: white;
+    cursor: move;
+    user-select: none;
+}
+
+.comic-dubber-header h1 {
+    font-size: 16px;
+    margin: 0;
+}
+
+.comic-dubber-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.comic-dubber-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.comic-dubber-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.comic-dubber-content {
+    overflow-y: auto;
+    max-height: 550px;
+}
+
+.comic-dubber-container {
+    padding: 15px;
+}
+
+.comic-dubber-minimized {
+    height: 40px !important;
+    overflow: hidden;
+}
+
+/* Popup styles adapted for the injected UI */
+.comic-dubber-ui * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.comic-dubber-ui .toggle-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.comic-dubber-ui .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+.comic-dubber-ui .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.comic-dubber-ui .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+}
+
+.comic-dubber-ui .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.4s;
+}
+
+.comic-dubber-ui input:checked + .slider {
+    background-color: #4285f4;
+}
+
+.comic-dubber-ui input:focus + .slider {
+    box-shadow: 0 0 1px #4285f4;
+}
+
+.comic-dubber-ui input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+.comic-dubber-ui .slider.round {
+    border-radius: 20px;
+}
+
+.comic-dubber-ui .slider.round:before {
+    border-radius: 50%;
+}
+
+.comic-dubber-ui .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.comic-dubber-ui .detection-section,
+.comic-dubber-ui .playback-section,
+.comic-dubber-ui .voice-section,
+.comic-dubber-ui .text-correction-section {
+    background-color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comic-dubber-ui h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.comic-dubber-ui h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #555;
+}
+
+.comic-dubber-ui .primary-button {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.comic-dubber-ui .primary-button:hover {
+    background-color: #3367d6;
+}
+
+.comic-dubber-ui .primary-button:disabled {
+    background-color: #a9c3f5;
+    cursor: not-allowed;
+}
+
+.comic-dubber-ui .secondary-button {
+    background-color: #f1f3f4;
+    color: #3c4043;
+    border: 1px solid #dadce0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.comic-dubber-ui .secondary-button:hover {
+    background-color: #e8eaed;
+}
+
+.comic-dubber-ui .status {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #555;
+}
+
+.comic-dubber-ui .bubble-count {
+    margin-top: 4px;
+    font-size: 14px;
+    color: #4285f4;
+    font-weight: 500;
+}
+
+.comic-dubber-ui .detection-info {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #4285f4;
+}
+
+.comic-dubber-ui .detection-tip {
+    margin: 4px 0;
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+}
+
+.comic-dubber-ui .playback-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.comic-dubber-ui .control-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background-color: #f1f3f4;
+    color: #3c4043;
+    border: 1px solid #dadce0;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.comic-dubber-ui .control-button:hover {
+    background-color: #e8eaed;
+}
+
+.comic-dubber-ui .control-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.comic-dubber-ui .icon {
+    font-size: 12px;
+}
+
+.comic-dubber-ui .volume-control,
+.comic-dubber-ui .rate-control {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.comic-dubber-ui .volume-control label,
+.comic-dubber-ui .rate-control label {
+    width: 60px;
+    font-size: 14px;
+}
+
+.comic-dubber-ui input[type="range"] {
+    flex: 1;
+    height: 4px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.comic-dubber-ui input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #4285f4;
+    cursor: pointer;
+}
+
+.comic-dubber-ui .voice-selection {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.comic-dubber-ui .voice-selection label {
+    width: 100px;
+    font-size: 14px;
+}
+
+.comic-dubber-ui select {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.comic-dubber-ui .character-voices {
+    margin-top: 12px;
+}
+
+.comic-dubber-ui .character-voice-item {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.comic-dubber-ui .character-name {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+}
+
+.comic-dubber-ui .character-voice {
+    flex: 1;
+}
+
+.comic-dubber-ui .remove-character {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.comic-dubber-ui .text-correction-item {
+    margin-bottom: 10px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.comic-dubber-ui .text-correction-item p {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.comic-dubber-ui .text-correction-item textarea {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 60px;
+}
+
+.comic-dubber-ui footer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.comic-dubber-ui #saveSettingsButton {
+    width: 100%;
 }

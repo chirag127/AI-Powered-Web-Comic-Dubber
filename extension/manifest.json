@@ -15,7 +15,6 @@
     "service_worker": "background/background.js"
   },
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "popup/images/icon16.png",
       "48": "popup/images/icon48.png",
@@ -30,6 +29,7 @@
       "js": [
         "lib/opencv.js",
         "lib/tesseract.min.js",
+        "content/ui-template.js",
         "content/content.js"
       ],
       "css": [
