@@ -38,6 +38,9 @@ let settings = {
     pitch: 1.0,
 };
 
+// Page detection state
+let isFirstDetection = true; // Track if this is the first detection
+
 // Initialize when the popup loads
 document.addEventListener("DOMContentLoaded", initialize);
 
@@ -52,6 +55,9 @@ function initialize() {
 
     // Set up event listeners
     setupEventListeners();
+
+    // Check if there's already a page being processed
+    getCurrentPageInfo();
 }
 
 /**
@@ -220,49 +226,63 @@ function detectSpeechBubbles() {
     detectButton.disabled = true;
     detectButton.textContent = "Detecting...";
 
+    // Determine if we should move to the next page
+    const moveToNextPage = !isFirstDetection;
+
     // Send message to background script to detect bubbles
-    chrome.runtime.sendMessage({ action: "detectBubbles" }, (response) => {
-        // Re-enable detect button with appropriate text
-        detectButton.disabled = false;
+    chrome.runtime.sendMessage(
+        {
+            action: "detectBubbles",
+            moveToNextPage: moveToNextPage,
+        },
+        (response) => {
+            // Re-enable detect button with appropriate text
+            detectButton.disabled = false;
 
-        if (response && response.success) {
-            detectedBubbles = response.bubbles;
+            if (response && response.success) {
+                // After first successful detection, next click should move to next page
+                isFirstDetection = false;
 
-            // Update page information
-            if (response.pageInfo) {
-                currentPage = response.pageInfo.currentPage;
-                totalPages = response.pageInfo.totalPages;
+                detectedBubbles = response.bubbles;
 
-                // Update button text based on whether there are more pages
-                if (response.pageInfo.hasNextPage) {
-                    detectButton.textContent = `Next Page (${currentPage}/${totalPages})`;
+                // Update page information
+                if (response.pageInfo) {
+                    currentPage = response.pageInfo.currentPage;
+                    totalPages = response.pageInfo.totalPages;
+
+                    // Update button text based on whether there are more pages
+                    if (response.pageInfo.hasNextPage) {
+                        detectButton.textContent = `Next Page (${currentPage}/${totalPages})`;
+                    } else {
+                        // If we're on the last page, reset to first detection mode
+                        detectButton.textContent = "Detect Speech Bubbles";
+                        isFirstDetection = true;
+                    }
                 } else {
                     detectButton.textContent = "Detect Speech Bubbles";
                 }
+
+                detectionStatus.textContent = `Page ${currentPage}/${totalPages} processed`;
+                bubbleCount.textContent = `Found ${detectedBubbles.length} speech bubbles on this page`;
+
+                // Enable playback controls
+                playButton.disabled = false;
+                stopButton.disabled = false;
+
+                // Populate text correction list
+                populateTextCorrectionList(detectedBubbles);
             } else {
+                detectionStatus.textContent = "Error detecting speech bubbles";
+                bubbleCount.textContent = response?.error || "Unknown error";
                 detectButton.textContent = "Detect Speech Bubbles";
+
+                // Disable playback controls
+                playButton.disabled = true;
+                pauseButton.disabled = true;
+                stopButton.disabled = true;
             }
-
-            detectionStatus.textContent = `Page ${currentPage}/${totalPages} processed`;
-            bubbleCount.textContent = `Found ${detectedBubbles.length} speech bubbles on this page`;
-
-            // Enable playback controls
-            playButton.disabled = false;
-            stopButton.disabled = false;
-
-            // Populate text correction list
-            populateTextCorrectionList(detectedBubbles);
-        } else {
-            detectionStatus.textContent = "Error detecting speech bubbles";
-            bubbleCount.textContent = response?.error || "Unknown error";
-            detectButton.textContent = "Detect Speech Bubbles";
-
-            // Disable playback controls
-            playButton.disabled = true;
-            pauseButton.disabled = true;
-            stopButton.disabled = true;
         }
-    });
+    );
 }
 
 /**
@@ -413,6 +433,33 @@ function stopVoiceover() {
             playButton.disabled = false;
             pauseButton.disabled = true;
             stopButton.disabled = true;
+        }
+    });
+}
+
+/**
+ * Get current page information without processing a new page
+ */
+function getCurrentPageInfo() {
+    chrome.runtime.sendMessage({ action: "getCurrentPageInfo" }, (response) => {
+        if (response && response.success) {
+            // Update page information
+            if (response.pageInfo) {
+                currentPage = response.pageInfo.currentPage;
+                totalPages = response.pageInfo.totalPages;
+
+                // Update UI to show current page
+                detectionStatus.textContent = `Page ${currentPage}/${totalPages} loaded`;
+
+                // Update button text based on whether there are more pages
+                if (response.pageInfo.hasNextPage) {
+                    detectButton.textContent = `Next Page (${currentPage}/${totalPages})`;
+                    isFirstDetection = false;
+                } else {
+                    detectButton.textContent = "Detect Speech Bubbles";
+                    isFirstDetection = true;
+                }
+            }
         }
     });
 }

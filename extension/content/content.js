@@ -47,13 +47,19 @@ function initialize() {
         console.log("Content script received message:", message);
 
         if (message.action === "detectBubbles") {
+            // Extract moveToNextPage parameter (default to false if not provided)
+            const moveToNextPage = message.moveToNextPage || false;
+            console.log(
+                `Detecting speech bubbles, moveToNextPage: ${moveToNextPage}`
+            );
+
             // Check if OpenCV is loaded
             if (!cv) {
                 console.log("OpenCV not loaded yet, waiting...");
                 // Try to initialize OpenCV again
                 initOpenCV()
                     .then(() => {
-                        detectSpeechBubbles()
+                        detectSpeechBubbles(moveToNextPage)
                             .then((result) => {
                                 // Store only the bubbles from the current page
                                 detectedBubbles = result.bubbles;
@@ -83,7 +89,7 @@ function initialize() {
                         });
                     });
             } else {
-                detectSpeechBubbles()
+                detectSpeechBubbles(moveToNextPage)
                     .then((result) => {
                         // Store only the bubbles from the current page
                         detectedBubbles = result.bubbles;
@@ -97,6 +103,27 @@ function initialize() {
                         console.error("Error detecting speech bubbles:", error);
                         sendResponse({ success: false, error: error.message });
                     });
+            }
+            return true; // Keep the message channel open for async response
+        }
+
+        if (message.action === "getCurrentPageInfo") {
+            // Return information about the current page without processing a new one
+            if (comicImages.length === 0) {
+                // No images initialized yet
+                sendResponse({
+                    success: false,
+                    error: "No comic images detected yet",
+                });
+            } else {
+                sendResponse({
+                    success: true,
+                    pageInfo: {
+                        currentPage: currentImageIndex + 1,
+                        totalPages: comicImages.length,
+                        hasNextPage: comicImages.length > 1,
+                    },
+                });
             }
             return true; // Keep the message channel open for async response
         }
@@ -304,10 +331,11 @@ async function initializeComicImages() {
 }
 
 /**
- * Detect speech bubbles in the next comic image
+ * Detect speech bubbles in the comic image
+ * @param {boolean} moveToNextPage - Whether to move to the next page or stay on the current page
  * @returns {Promise<Object>} Object containing bubbles and page information
  */
-async function detectSpeechBubbles() {
+async function detectSpeechBubbles(moveToNextPage = false) {
     return new Promise((resolve, reject) => {
         try {
             // Initialize comic images if not already done
@@ -319,10 +347,13 @@ async function detectSpeechBubbles() {
                         processCurrentImage(resolve, reject);
                     })
                     .catch((error) => reject(error));
-            } else {
-                // Move to the next image
+            } else if (moveToNextPage) {
+                // Only move to the next image if explicitly requested
                 currentImageIndex =
                     (currentImageIndex + 1) % comicImages.length;
+                processCurrentImage(resolve, reject);
+            } else {
+                // Process the current image again (useful for refreshing or after settings change)
                 processCurrentImage(resolve, reject);
             }
         } catch (error) {
@@ -480,6 +511,10 @@ async function processImage(imageIndex) {
                         if (aspectRatio < 0.2 || aspectRatio > 5) {
                             continue;
                         }
+
+                        // Additional check for speech bubble shape
+                        // Speech bubbles often have a more rounded shape
+                        const isRounded = circularity > 0.6; // Higher circularity indicates more rounded shape
 
                         // Calculate solidity (area / convex hull area)
                         const hull = new cv.Mat();
