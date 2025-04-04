@@ -60,8 +60,6 @@ The backend is optional for basic functionality, but required for saving user pr
     JWT_SECRET=your_jwt_secret_key
     JWT_EXPIRES_IN=7d
 
-    # API Keys
-    RESPONSIVE_VOICE_API_KEY=bL12uCnj
     ```
 
 4. Start the server:
@@ -99,9 +97,10 @@ The backend is optional for basic functionality, but required for saving user pr
 -   Frontend: JavaScript, HTML, CSS
 -   Backend: Node.js, Express.js
 -   Database: MongoDB
--   AI Services: ResponsiveVoice (API key: bL12uCnj)
 -   Computer Vision: OpenCV.js for bubble detection
 -   OCR: Tesseract.js for text extraction
+-   Future Enhancements: Improved speech bubble detection using machine learning
+-   Voice Synthesis: Web Speech API for text-to-speech
 
 ## How It Works
 
@@ -111,7 +110,7 @@ The backend is optional for basic functionality, but required for saving user pr
 
 3. **Character Recognition**: The extension attempts to identify different characters based on text patterns (e.g., "Character: Text") and assigns voices accordingly.
 
-4. **Voice Synthesis**: ResponsiveVoice API is used to convert the extracted text to speech with different voices for different characters.
+4. **Voice Synthesis**: Web Speech API is used to convert the extracted text to speech with different voices for different characters.
 
 5. **Playback**: The extension plays the generated audio while highlighting the corresponding speech bubbles on the page.
 

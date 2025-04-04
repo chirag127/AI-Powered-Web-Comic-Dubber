@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "AI-Powered Web Comic Dubber",
+  "version": "1.0.0",
+  "description": "Detects speech bubbles in web comics and generates AI-based voiceovers for the dialogue",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "popup/images/icon16.png",
+      "48": "popup/images/icon48.png",
+      "128": "popup/images/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/opencv.js", "lib/tesseract.min.js", "content/content.js"],
+      "css": ["content/content.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/*", "popup/images/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
