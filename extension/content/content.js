@@ -17,7 +17,19 @@ class BubbleDetector {
         if (typeof cv === "undefined") {
             throw new Error("OpenCV.js is not available");
         }
-        this.cv = cv; // OpenCV.js instance
+        try {
+            this.cv = cv; // OpenCV.js instance
+            // Test if OpenCV.js is working properly
+            const testMat = new this.cv.Mat();
+            testMat.delete(); // Clean up test matrix
+            console.log("OpenCV.js initialized successfully");
+        } catch (error) {
+            console.error("Error initializing OpenCV.js:", error);
+            if (error.name === "BindingError") {
+                throw new Error("OpenCV.js binding error: " + error.message);
+            }
+            throw error;
+        }
     }
 
     async detectBubbles(image) {
@@ -27,61 +39,81 @@ class BubbleDetector {
             }
 
             // Convert image to grayscale
-            let src = this.cv.imread(image);
-            let gray = new this.cv.Mat();
-            this.cv.cvtColor(src, gray, this.cv.COLOR_RGBA2GRAY);
+            let src, gray, binary, contours, hierarchy;
+            try {
+                src = this.cv.imread(image);
+                gray = new this.cv.Mat();
+                this.cv.cvtColor(src, gray, this.cv.COLOR_RGBA2GRAY);
 
-            // Apply threshold to get binary image
-            let binary = new this.cv.Mat();
-            this.cv.threshold(
-                gray,
-                binary,
-                200,
-                255,
-                this.cv.THRESH_BINARY_INV
-            );
+                // Apply threshold to get binary image
+                binary = new this.cv.Mat();
+                this.cv.threshold(
+                    gray,
+                    binary,
+                    200,
+                    255,
+                    this.cv.THRESH_BINARY_INV
+                );
 
-            // Find contours
-            let contours = new this.cv.MatVector();
-            let hierarchy = new this.cv.Mat();
-            this.cv.findContours(
-                binary,
-                contours,
-                hierarchy,
-                this.cv.RETR_EXTERNAL,
-                this.cv.CHAIN_APPROX_SIMPLE
-            );
+                // Find contours
+                contours = new this.cv.MatVector();
+                hierarchy = new this.cv.Mat();
+                this.cv.findContours(
+                    binary,
+                    contours,
+                    hierarchy,
+                    this.cv.RETR_EXTERNAL,
+                    this.cv.CHAIN_APPROX_SIMPLE
+                );
+            } catch (error) {
+                console.error("Error in OpenCV image processing:", error);
+                if (error.name === "BindingError") {
+                    throw new Error(
+                        "OpenCV.js binding error: " + error.message
+                    );
+                }
+                throw error;
+            }
 
             // Filter contours to find speech bubbles
             let bubbles = [];
-            for (let i = 0; i < contours.size(); ++i) {
-                let contour = contours.get(i);
-                let area = this.cv.contourArea(contour);
-                let perimeter = this.cv.arcLength(contour, true);
+            try {
+                for (let i = 0; i < contours.size(); ++i) {
+                    let contour = contours.get(i);
+                    let area = this.cv.contourArea(contour);
+                    let perimeter = this.cv.arcLength(contour, true);
 
-                // Calculate circularity
-                let circularity =
-                    (4 * Math.PI * area) / (perimeter * perimeter);
+                    // Calculate circularity
+                    let circularity =
+                        (4 * Math.PI * area) / (perimeter * perimeter);
 
-                // Filter based on area and circularity
-                if (area > 1000 && circularity > 0.2) {
-                    let rect = this.cv.boundingRect(contour);
-                    bubbles.push({
-                        x: rect.x,
-                        y: rect.y,
-                        width: rect.width,
-                        height: rect.height,
-                        contour: contour,
-                    });
+                    // Filter based on area and circularity
+                    if (area > 1000 && circularity > 0.2) {
+                        let rect = this.cv.boundingRect(contour);
+                        bubbles.push({
+                            x: rect.x,
+                            y: rect.y,
+                            width: rect.width,
+                            height: rect.height,
+                            contour: contour,
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error in contour processing:", error);
+                throw error;
+            } finally {
+                // Clean up
+                try {
+                    if (src) src.delete();
+                    if (gray) gray.delete();
+                    if (binary) binary.delete();
+                    if (contours) contours.delete();
+                    if (hierarchy) hierarchy.delete();
+                } catch (cleanupError) {
+                    console.error("Error during cleanup:", cleanupError);
                 }
             }
-
-            // Clean up
-            src.delete();
-            gray.delete();
-            binary.delete();
-            contours.delete();
-            hierarchy.delete();
 
             return bubbles;
         } catch (error) {
@@ -387,11 +419,26 @@ function createDraggableUI() {
     statusArea.style.fontSize = "14px";
     statusArea.style.lineHeight = "1.4";
 
+    // Check if we're on Webtoons or other sites with strict CSP
+    const isWebtoons = window.location.hostname.includes("webtoons.com");
+    const hasStrictCSP =
+        isWebtoons ||
+        document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+
     // Show initial status message
-    statusArea.textContent =
-        "Ready to detect speech bubbles. Click 'Detect Speech Bubbles' to start.";
-    statusArea.style.display = "block";
-    statusArea.style.color = "#333";
+    if (hasStrictCSP) {
+        statusArea.textContent =
+            "Warning: This website has security restrictions that may prevent the extension from working properly. Consider trying on XKCD.com or GoComics.com instead.";
+        statusArea.style.display = "block";
+        statusArea.style.backgroundColor = "#fff8e1";
+        statusArea.style.color = "#f57f17";
+        statusArea.style.border = "1px solid #ffe082";
+    } else {
+        statusArea.textContent =
+            "Ready to detect speech bubbles. Click 'Detect Speech Bubbles' to start.";
+        statusArea.style.display = "block";
+        statusArea.style.color = "#333";
+    }
 
     container.appendChild(statusArea);
 
@@ -479,13 +526,34 @@ function createDraggableUI() {
                     );
                     updateTextCorrectionUI(response.texts);
                 } else {
-                    // Check if it's a library loading error
+                    // Check if it's a Webtoons or CSP error
                     if (
                         response.error &&
-                        response.error.includes("libraries")
+                        response.error.includes("security restrictions")
                     ) {
                         showStatus(
-                            `${response.error} This may be due to browser security settings or a slow connection.`,
+                            `${response.error} Try using the extension on sites like XKCD.com or GoComics.com.`,
+                            true
+                        );
+                    }
+                    // Check if it's an OpenCV conflict error
+                    else if (
+                        response.error &&
+                        response.error.includes("already includes OpenCV.js")
+                    ) {
+                        showStatus(
+                            `${response.error} This happens when the website already uses OpenCV.js, causing a conflict.`,
+                            true
+                        );
+                    }
+                    // Check if it's a library loading error
+                    else if (
+                        response.error &&
+                        (response.error.includes("libraries") ||
+                            response.error.includes("BindingError"))
+                    ) {
+                        showStatus(
+                            `Failed to load required libraries. This may be due to conflicts with the website's JavaScript. Please try on a different comic site like XKCD.com.`,
                             true
                         );
                     } else {
@@ -862,45 +930,110 @@ function loadLibraries() {
             return;
         }
 
-        // Create a script element for OpenCV.js
-        const opencvScript = document.createElement("script");
-        opencvScript.src = chrome.runtime.getURL("lib/opencv.js");
-        opencvScript.type = "text/javascript";
-        opencvScript.onload = function () {
-            console.log("OpenCV.js loaded successfully");
+        // Check if we're on Webtoons or other sites with strict CSP
+        const isWebtoons = window.location.hostname.includes("webtoons.com");
+        const hasStrictCSP =
+            isWebtoons ||
+            document.querySelector(
+                'meta[http-equiv="Content-Security-Policy"]'
+            );
 
-            // After OpenCV.js is loaded, load Tesseract.js
-            const tesseractScript = document.createElement("script");
-            tesseractScript.src = chrome.runtime.getURL("lib/tesseract.min.js");
-            tesseractScript.type = "text/javascript";
-            tesseractScript.onload = function () {
-                console.log("Tesseract.js loaded successfully");
+        if (hasStrictCSP) {
+            console.log("Detected site with strict Content Security Policy");
+            // For sites with strict CSP, we need to use a different approach
+            // Notify the user about the limitation
+            reject(
+                new Error(
+                    "This website has security restrictions that prevent loading required libraries. Please try on a different comic site."
+                )
+            );
+            return;
+        }
 
-                // Wait a moment for libraries to initialize
-                setTimeout(() => {
-                    if (
-                        typeof cv !== "undefined" &&
-                        typeof Tesseract !== "undefined"
-                    ) {
-                        console.log("Libraries initialized successfully");
-                        resolve(true);
-                    } else {
-                        console.error("Libraries failed to initialize");
-                        reject(new Error("Libraries failed to initialize"));
-                    }
-                }, 500);
-            };
-            tesseractScript.onerror = function (error) {
-                console.error("Failed to load Tesseract.js:", error);
-                reject(new Error("Failed to load Tesseract.js"));
-            };
-            document.head.appendChild(tesseractScript);
+        // Check if OpenCV.js is already being loaded by the page
+        const existingOpenCVScript = document.querySelector(
+            'script[src*="opencv.js"]'
+        );
+        if (existingOpenCVScript) {
+            console.log("OpenCV.js is already being loaded by the page");
+            reject(
+                new Error(
+                    "This page already includes OpenCV.js which conflicts with the extension. Please try on a different comic site."
+                )
+            );
+            return;
+        }
+
+        // Create a unique ID for our OpenCV instance to avoid conflicts
+        window.opencvjs_unique_id =
+            "comic_dubber_opencv_" +
+            Math.random().toString(36).substring(2, 15);
+
+        // Load Tesseract.js first since it's smaller and less likely to conflict
+        const tesseractScript = document.createElement("script");
+        tesseractScript.src = chrome.runtime.getURL("lib/tesseract.min.js");
+        tesseractScript.type = "text/javascript";
+        tesseractScript.onload = function () {
+            console.log("Tesseract.js loaded successfully");
+
+            // After Tesseract.js is loaded, load OpenCV.js with error handling
+            try {
+                const opencvScript = document.createElement("script");
+                opencvScript.src = chrome.runtime.getURL("lib/opencv.js");
+                opencvScript.type = "text/javascript";
+                opencvScript.onerror = function (error) {
+                    console.error("Failed to load OpenCV.js:", error);
+                    reject(new Error("Failed to load OpenCV.js"));
+                };
+
+                // Handle OpenCV.js load completion
+                opencvScript.onload = function () {
+                    console.log(
+                        "OpenCV.js script loaded, waiting for initialization"
+                    );
+
+                    // OpenCV.js will call the cv callback when ready
+                    window.Module = window.Module || {};
+                    window.Module.onRuntimeInitialized = function () {
+                        console.log("OpenCV.js runtime initialized");
+
+                        // Wait a moment for everything to stabilize
+                        setTimeout(() => {
+                            if (
+                                typeof cv !== "undefined" &&
+                                typeof Tesseract !== "undefined"
+                            ) {
+                                console.log(
+                                    "Libraries initialized successfully"
+                                );
+                                resolve(true);
+                            } else {
+                                console.error("Libraries failed to initialize");
+                                reject(
+                                    new Error("Libraries failed to initialize")
+                                );
+                            }
+                        }, 1000);
+                    };
+                };
+
+                document.head.appendChild(opencvScript);
+            } catch (error) {
+                console.error("Error during OpenCV.js loading:", error);
+                reject(
+                    new Error(
+                        "Error during OpenCV.js loading: " + error.message
+                    )
+                );
+            }
         };
-        opencvScript.onerror = function (error) {
-            console.error("Failed to load OpenCV.js:", error);
-            reject(new Error("Failed to load OpenCV.js"));
+
+        tesseractScript.onerror = function (error) {
+            console.error("Failed to load Tesseract.js:", error);
+            reject(new Error("Failed to load Tesseract.js"));
         };
-        document.head.appendChild(opencvScript);
+
+        document.head.appendChild(tesseractScript);
     });
 }
 

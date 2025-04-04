@@ -20,6 +20,23 @@ This error occurs when the extension can't load the required libraries (OpenCV.j
 
 6. **Clear browser cache**: Go to your browser settings and clear the cache, then try again.
 
+## "This website has security restrictions that prevent loading required libraries"
+
+This error occurs on websites with strict Content Security Policies (CSP), such as Webtoons.com, that block the extension from loading external scripts.
+
+### Solutions:
+
+1. **Try on a different comic site**: The extension works best on sites with less restrictive security policies. Try these recommended sites:
+
+    - [XKCD](https://xkcd.com/)
+    - [GoComics](https://www.gocomics.com/)
+    - [Penny Arcade](https://www.penny-arcade.com/)
+    - [Dilbert](https://dilbert.com/)
+
+2. **Why this happens**: Websites like Webtoons.com implement strict security measures that prevent browser extensions from injecting scripts like OpenCV.js and Tesseract.js, which are necessary for the extension to function.
+
+3. **Technical limitation**: This is a technical limitation due to web security standards and not a bug in the extension. Unfortunately, there's no workaround for sites with these security restrictions.
+
 ## "Components not initialized. Please try again."
 
 This error occurs when the extension can't properly initialize the required components (BubbleDetector, TextExtractor, or AudioPlayer).
@@ -65,6 +82,18 @@ This error occurs when the OCR (Optical Character Recognition) fails to extract 
 1. **Try on a comic with clearer text**: The OCR works best on comics with clear, printed text rather than handwritten text.
 
 2. **Check if the speech bubbles are correctly detected**: If the speech bubbles are not correctly highlighted, the text extraction may fail.
+
+## "OpenCV.js binding error: Cannot register public name 'IntVector' twice"
+
+This error occurs when there's a conflict with OpenCV.js, typically because the website you're visiting already uses OpenCV.js or a similar library.
+
+### Solutions:
+
+1. **Try on a different comic site**: This error is specific to certain websites that already use OpenCV.js or similar libraries. Try the extension on recommended sites like XKCD.com or GoComics.com.
+
+2. **Refresh the page**: Sometimes refreshing the page and then using the extension can resolve temporary conflicts.
+
+3. **Why this happens**: The binding error occurs when OpenCV.js tries to register internal functions that are already registered by another instance of the library on the page. This is a technical limitation and not a bug in the extension.
 
 ## General Troubleshooting Steps
 
