@@ -24,20 +24,13 @@ A browser extension that detects speech bubbles in web comics and generates AI-b
 
 ### Extension Setup
 
-1. Download the required libraries:
+1. Clone this repository or download the source code
 
-    - Download [Tesseract.js](https://github.com/naptha/tesseract.js/tree/master/dist) and save as `extension/lib/tesseract.min.js`
-    - Download [OpenCV.js](https://docs.opencv.org/3.4.0/opencv.js) and save as `extension/lib/opencv.js`
+2. Open Chrome and navigate to `chrome://extensions/`
 
-2. Create icon files in `extension/popup/images/` (icon16.png, icon48.png, icon128.png)
+3. Enable "Developer mode" in the top-right corner
 
-    - You can use the included `extension/generate_icons.html` file to create these icons
-
-3. Open Chrome and navigate to `chrome://extensions/`
-
-4. Enable "Developer mode" in the top-right corner
-
-5. Click "Load unpacked" and select the `extension` directory
+4. Click "Load unpacked" and select the `extension` directory from this repository
 
 ## Usage
 
@@ -73,22 +66,23 @@ If you encounter issues with the extension, please refer to the [Troubleshooting
 ## Technologies Used
 
 -   JavaScript, HTML, CSS
--   Computer Vision: OpenCV.js for bubble detection
--   OCR: Tesseract.js for text extraction
+-   OCR: Google Gemini 2.0 Flash API (simulated in the current version)
 -   Voice Synthesis: Web Speech API for text-to-speech
 -   Chrome Storage API for saving preferences
 
 ## How It Works
 
-1. **Speech Bubble Detection**: The extension uses OpenCV.js to analyze the images on the page and detect potential speech bubbles based on their shape, size, and other characteristics.
+1. **Comic Image Detection**: The extension scans the page for potential comic images based on their size.
 
-2. **Text Extraction**: Once speech bubbles are detected, Tesseract.js is used to perform OCR on each bubble to extract the text.
+2. **Speech Bubble Detection**: When you click "Detect Speech Bubbles" or the "Dub This Comic" overlay button, the extension analyzes the images.
 
-3. **Character Recognition**: The extension attempts to identify different characters based on text patterns (e.g., "Character: Text") and assigns voices accordingly.
+3. **Text Extraction**: The extension extracts text from the speech bubbles using OCR technology.
 
-4. **Voice Synthesis**: Web Speech API is used to convert the extracted text to speech with different voices for different characters.
+4. **Character Recognition**: The extension attempts to identify different characters based on the dialogue context and assigns voices accordingly.
 
-5. **Playback**: The extension plays the generated audio while highlighting the corresponding speech bubbles on the page.
+5. **Voice Synthesis**: Web Speech API is used to convert the extracted text to speech with different voices for different characters.
+
+6. **Playback**: The extension plays the generated audio while highlighting the corresponding speech bubbles on the page.
 
 ## Limitations
 
