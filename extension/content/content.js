@@ -75,9 +75,10 @@ function initialize() {
     });
 }
 
-// Store comic images and current page index
+// Store comic images and current batch information
 let comicImages = [];
-let currentImageIndex = -1;
+let currentBatchStart = -1;
+const BATCH_SIZE = 10; // Process 10 pages at a time
 
 /**
  * Initialize comic images on the page
@@ -101,7 +102,7 @@ async function initializeComicImages() {
             }
 
             console.log(`Found ${comicImages.length} comic images on the page`);
-            currentImageIndex = -1; // Reset index
+            currentBatchStart = -1; // Reset index
             resolve(comicImages);
         } catch (error) {
             reject(error);
@@ -110,26 +111,26 @@ async function initializeComicImages() {
 }
 
 /**
- * Detect speech bubbles in the next comic image
- * @returns {Promise<Object>} Object containing bubbles and page information
+ * Detect speech bubbles in the next batch of comic images
+ * @returns {Promise<Object>} Object containing bubbles and batch information
  */
 async function detectSpeechBubbles() {
     return new Promise((resolve, reject) => {
         try {
             // Initialize comic images if not already done
-            if (comicImages.length === 0 || currentImageIndex === -1) {
+            if (comicImages.length === 0 || currentBatchStart === -1) {
                 initializeComicImages()
                     .then(() => {
-                        // Move to the first image
-                        currentImageIndex = 0;
-                        processCurrentImage(resolve, reject);
+                        // Start with the first batch
+                        currentBatchStart = 0;
+                        processBatch(resolve, reject);
                     })
                     .catch((error) => reject(error));
             } else {
-                // Move to the next image
-                currentImageIndex =
-                    (currentImageIndex + 1) % comicImages.length;
-                processCurrentImage(resolve, reject);
+                // Move to the next batch
+                currentBatchStart =
+                    (currentBatchStart + BATCH_SIZE) % comicImages.length;
+                processBatch(resolve, reject);
             }
         } catch (error) {
             reject(error);
@@ -138,68 +139,129 @@ async function detectSpeechBubbles() {
 }
 
 /**
- * Process the current comic image
+ * Process a batch of comic images
  * @param {Function} resolve - Promise resolve function
  * @param {Function} reject - Promise reject function
  */
-function processCurrentImage(resolve, reject) {
+function processBatch(resolve, reject) {
     try {
-        const img = comicImages[currentImageIndex];
+        // Calculate the end index for this batch (not exceeding array length)
+        const batchEnd = Math.min(
+            currentBatchStart + BATCH_SIZE,
+            comicImages.length
+        );
+        const currentBatchSize = batchEnd - currentBatchStart;
+
         console.log(
-            `Processing image ${currentImageIndex + 1} of ${comicImages.length}`
+            `Processing batch: images ${
+                currentBatchStart + 1
+            } to ${batchEnd} of ${comicImages.length}`
         );
 
-        // Create a canvas to process the image
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        // Process all images in the batch
+        const batchPromises = [];
+        const allBubbles = [];
 
-        // Draw the image on the canvas
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-
-        // Get image data for processing (would be used with OpenCV.js in a real implementation)
-        // const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        // For demonstration, we'll create mock bubbles
-        // In a real implementation, we would use OpenCV.js to detect actual bubbles
-        const mockBubbles = createMockBubbles(img, currentImageIndex);
-
-        const bubbles = [];
-
-        // Extract text from each bubble using Tesseract.js
-        for (const bubble of mockBubbles) {
-            try {
-                // In a real implementation, we would crop the bubble area and use Tesseract
-                // For now, we'll use mock text
-                bubble.text = bubble.mockText || "Sample text in speech bubble";
-                bubbles.push(bubble);
-            } catch (error) {
-                console.error("Error extracting text from bubble:", error);
-            }
+        for (let i = currentBatchStart; i < batchEnd; i++) {
+            batchPromises.push(
+                processImage(i).then((bubbles) => {
+                    // Add all bubbles from this image to our collection
+                    allBubbles.push(...bubbles);
+                })
+            );
         }
 
-        console.log(
-            `Detected ${bubbles.length} bubbles in image ${
-                currentImageIndex + 1
-            }`
-        );
+        // Wait for all images in the batch to be processed
+        Promise.all(batchPromises)
+            .then(() => {
+                console.log(
+                    `Completed batch processing. Found ${allBubbles.length} bubbles in ${currentBatchSize} images`
+                );
 
-        // Highlight the bubbles on the page
-        highlightBubbles(bubbles);
+                // Highlight all bubbles
+                highlightBubbles(allBubbles);
 
-        // Return bubbles along with page information
-        resolve({
-            bubbles,
-            pageInfo: {
-                currentPage: currentImageIndex + 1,
-                totalPages: comicImages.length,
-                hasNextPage: comicImages.length > 1,
-            },
-        });
+                // Calculate if there are more batches to process
+                const hasNextBatch = batchEnd < comicImages.length;
+
+                // Return bubbles along with batch information
+                resolve({
+                    bubbles: allBubbles,
+                    pageInfo: {
+                        currentBatch:
+                            Math.floor(currentBatchStart / BATCH_SIZE) + 1,
+                        totalBatches: Math.ceil(
+                            comicImages.length / BATCH_SIZE
+                        ),
+                        currentStartPage: currentBatchStart + 1,
+                        currentEndPage: batchEnd,
+                        totalPages: comicImages.length,
+                        hasNextBatch: hasNextBatch,
+                    },
+                });
+            })
+            .catch((error) => {
+                reject(error);
+            });
     } catch (error) {
         reject(error);
     }
+}
+
+/**
+ * Process a single comic image
+ * @param {number} imageIndex - Index of the image to process
+ * @returns {Promise<Array>} Array of detected bubbles
+ */
+async function processImage(imageIndex) {
+    return new Promise((resolve) => {
+        try {
+            const img = comicImages[imageIndex];
+            console.log(
+                `Processing image ${imageIndex + 1} of ${comicImages.length}`
+            );
+
+            // Create a canvas to process the image
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            // Draw the image on the canvas
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+
+            // Get image data for processing (would be used with OpenCV.js in a real implementation)
+            // const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // For demonstration, we'll create mock bubbles
+            // In a real implementation, we would use OpenCV.js to detect actual bubbles
+            const mockBubbles = createMockBubbles(img, imageIndex);
+
+            const bubbles = [];
+
+            // Extract text from each bubble using Tesseract.js
+            for (const bubble of mockBubbles) {
+                try {
+                    // In a real implementation, we would crop the bubble area and use Tesseract
+                    // For now, we'll use mock text
+                    bubble.text =
+                        bubble.mockText || "Sample text in speech bubble";
+                    bubbles.push(bubble);
+                } catch (error) {
+                    console.error("Error extracting text from bubble:", error);
+                }
+            }
+
+            console.log(
+                `Detected ${bubbles.length} bubbles in image ${imageIndex + 1}`
+            );
+            resolve(bubbles);
+        } catch (error) {
+            console.error(`Error processing image ${imageIndex + 1}:`, error);
+            // Return empty array on error to continue processing other images
+            resolve([]);
+        }
+    });
 }
 
 /**
