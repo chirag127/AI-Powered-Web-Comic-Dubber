@@ -14,6 +14,9 @@ let currentSpeechIndex = -1;
 let isSpeaking = false;
 let speechSynthesis = window.speechSynthesis;
 let utterance = null;
+let cv = null; // OpenCV.js instance
+let availableVoices = []; // Available speech synthesis voices
+let characterVoiceMap = {}; // Map of characters to voices
 
 // Initialize when the content script loads
 initialize();
@@ -33,25 +36,68 @@ function initialize() {
     overlay.style.zIndex = "9999";
     document.body.appendChild(overlay);
 
+    // Initialize OpenCV.js
+    initOpenCV();
+
+    // Load available voices
+    loadVoices();
+
     // Listen for messages from background script
     chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
         console.log("Content script received message:", message);
 
         if (message.action === "detectBubbles") {
-            detectSpeechBubbles()
-                .then((result) => {
-                    // Store only the bubbles from the current page
-                    detectedBubbles = result.bubbles;
-                    sendResponse({
-                        success: true,
-                        bubbles: result.bubbles,
-                        pageInfo: result.pageInfo,
+            // Check if OpenCV is loaded
+            if (!cv) {
+                console.log("OpenCV not loaded yet, waiting...");
+                // Try to initialize OpenCV again
+                initOpenCV()
+                    .then(() => {
+                        detectSpeechBubbles()
+                            .then((result) => {
+                                // Store only the bubbles from the current page
+                                detectedBubbles = result.bubbles;
+                                sendResponse({
+                                    success: true,
+                                    bubbles: result.bubbles,
+                                    pageInfo: result.pageInfo,
+                                });
+                            })
+                            .catch((error) => {
+                                console.error(
+                                    "Error detecting speech bubbles:",
+                                    error
+                                );
+                                sendResponse({
+                                    success: false,
+                                    error: error.message,
+                                });
+                            });
+                    })
+                    .catch((error) => {
+                        console.error("Failed to initialize OpenCV:", error);
+                        sendResponse({
+                            success: false,
+                            error:
+                                "Failed to initialize OpenCV: " + error.message,
+                        });
                     });
-                })
-                .catch((error) => {
-                    console.error("Error detecting speech bubbles:", error);
-                    sendResponse({ success: false, error: error.message });
-                });
+            } else {
+                detectSpeechBubbles()
+                    .then((result) => {
+                        // Store only the bubbles from the current page
+                        detectedBubbles = result.bubbles;
+                        sendResponse({
+                            success: true,
+                            bubbles: result.bubbles,
+                            pageInfo: result.pageInfo,
+                        });
+                    })
+                    .catch((error) => {
+                        console.error("Error detecting speech bubbles:", error);
+                        sendResponse({ success: false, error: error.message });
+                    });
+            }
             return true; // Keep the message channel open for async response
         }
 
@@ -75,10 +121,157 @@ function initialize() {
     });
 }
 
-// Store comic images and current batch information
+/**
+ * Initialize OpenCV.js
+ * @returns {Promise} Promise that resolves when OpenCV is loaded
+ */
+async function initOpenCV() {
+    return new Promise((resolve, reject) => {
+        if (window.cv) {
+            cv = window.cv;
+            console.log("OpenCV.js already loaded");
+            resolve(cv);
+            return;
+        }
+
+        // Check if the script is already in the document
+        const existingScript = document.querySelector(
+            'script[src*="opencv.js"]'
+        );
+        if (existingScript) {
+            console.log(
+                "OpenCV.js script already exists, waiting for it to load"
+            );
+            const checkInterval = setInterval(() => {
+                if (window.cv) {
+                    clearInterval(checkInterval);
+                    cv = window.cv;
+                    console.log("OpenCV.js loaded from existing script");
+                    resolve(cv);
+                }
+            }, 100);
+            return;
+        }
+
+        console.log("Loading OpenCV.js...");
+        // Create a script element to load OpenCV.js
+        const script = document.createElement("script");
+        script.src = chrome.runtime.getURL("lib/opencv.js");
+        script.onload = () => {
+            // OpenCV.js sets a callback function when it's ready
+            window.Module = {
+                onRuntimeInitialized: () => {
+                    cv = window.cv;
+                    console.log("OpenCV.js loaded and initialized");
+                    resolve(cv);
+                },
+            };
+        };
+        script.onerror = (error) => {
+            console.error("Failed to load OpenCV.js:", error);
+            reject(new Error("Failed to load OpenCV.js"));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Load available voices for speech synthesis
+ */
+function loadVoices() {
+    // Check if voices are already loaded
+    let voices = speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        availableVoices = voices;
+        console.log(`Loaded ${availableVoices.length} voices`);
+        return;
+    }
+
+    // If not, wait for the voiceschanged event
+    speechSynthesis.onvoiceschanged = () => {
+        availableVoices = speechSynthesis.getVoices();
+        console.log(`Loaded ${availableVoices.length} voices`);
+    };
+}
+
+/**
+ * Initialize OpenCV.js
+ * @returns {Promise} Promise that resolves when OpenCV is loaded
+ */
+async function initOpenCV() {
+    return new Promise((resolve, reject) => {
+        // Check if OpenCV is already loaded
+        if (window.cv && window.cv.imread) {
+            cv = window.cv;
+            console.log("OpenCV.js already loaded");
+            resolve(cv);
+            return;
+        }
+
+        // Check if the script is already in the document
+        const existingScript = document.querySelector(
+            'script[src*="opencv.js"]'
+        );
+        if (existingScript) {
+            console.log(
+                "OpenCV.js script already exists, waiting for it to load"
+            );
+            // Wait for it to load
+            const checkInterval = setInterval(() => {
+                if (window.cv && window.cv.imread) {
+                    clearInterval(checkInterval);
+                    cv = window.cv;
+                    console.log("OpenCV.js loaded from existing script");
+                    resolve(cv);
+                }
+            }, 100);
+            return;
+        }
+
+        // Create a script element to load OpenCV.js
+        const script = document.createElement("script");
+        script.src = chrome.runtime.getURL("lib/opencv.js");
+        script.onload = () => {
+            // OpenCV.js has a Module object that needs to be initialized
+            const waitForOpenCV = setInterval(() => {
+                if (window.cv && window.cv.imread) {
+                    clearInterval(waitForOpenCV);
+                    cv = window.cv;
+                    console.log("OpenCV.js loaded successfully");
+                    resolve(cv);
+                }
+            }, 100);
+        };
+        script.onerror = (error) => {
+            console.error("Failed to load OpenCV.js:", error);
+            reject(new Error("Failed to load OpenCV.js"));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Load available voices for speech synthesis
+ */
+function loadVoices() {
+    // Check if voices are already available
+    let voices = speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        availableVoices = voices;
+        console.log(`Loaded ${availableVoices.length} voices`);
+        return;
+    }
+
+    // If not, wait for them to be loaded
+    speechSynthesis.onvoiceschanged = () => {
+        availableVoices = speechSynthesis.getVoices();
+        console.log(`Loaded ${availableVoices.length} voices`);
+    };
+}
+
+// Store comic images and current page information
 let comicImages = [];
-let currentBatchStart = -1;
-const BATCH_SIZE = 10; // Process 10 pages at a time
+let currentImageIndex = -1; // Current page index
 
 /**
  * Initialize comic images on the page
@@ -230,25 +423,194 @@ async function processImage(imageIndex) {
             // Draw the image on the canvas
             ctx.drawImage(img, 0, 0, img.width, img.height);
 
-            // Get image data for processing (would be used with OpenCV.js in a real implementation)
-            // const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            // Get image data for processing with OpenCV.js
+            const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
 
-            // For demonstration, we'll create mock bubbles
-            // In a real implementation, we would use OpenCV.js to detect actual bubbles
-            const mockBubbles = createMockBubbles(img, imageIndex);
-
+            // Detect speech bubbles using OpenCV.js
             const bubbles = [];
 
-            // Extract text from each bubble using Tesseract.js
-            for (const bubble of mockBubbles) {
+            try {
+                // Check if OpenCV is loaded
+                if (!cv) {
+                    throw new Error("OpenCV is not loaded");
+                }
+
+                // Convert the image data to an OpenCV matrix
+                const src = cv.matFromImageData(imageData);
+
+                // Create matrices for processing
+                const gray = new cv.Mat();
+                const blur = new cv.Mat();
+                const thresh = new cv.Mat();
+                const hierarchy = new cv.Mat();
+                const contours = new cv.MatVector();
+
                 try {
-                    // In a real implementation, we would crop the bubble area and use Tesseract
-                    // For now, we'll use mock text
-                    bubble.text =
-                        bubble.mockText || "Sample text in speech bubble";
+                    // Convert to grayscale
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                    // Apply Gaussian blur to reduce noise
+                    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
+
+                    // Apply adaptive threshold to get binary image
+                    // This helps identify white areas (speech bubbles) against darker backgrounds
+                    cv.adaptiveThreshold(
+                        blur,
+                        thresh,
+                        255,
+                        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+                        cv.THRESH_BINARY,
+                        11,
+                        2
+                    );
+
+                    // Find contours in the binary image
+                    cv.findContours(
+                        thresh,
+                        contours,
+                        hierarchy,
+                        cv.RETR_EXTERNAL,
+                        cv.CHAIN_APPROX_SIMPLE
+                    );
+
+                    console.log(
+                        `Found ${contours.size()} contours in image ${
+                            imageIndex + 1
+                        }`
+                    );
+
+                    // Process each contour to identify speech bubbles
+                    for (let i = 0; i < contours.size(); i++) {
+                        const contour = contours.get(i);
+
+                        // Calculate contour area
+                        const area = cv.contourArea(contour);
+
+                        // Filter out small contours
+                        if (area < 500) {
+                            continue;
+                        }
+
+                        // Get bounding rectangle
+                        const rect = cv.boundingRect(contour);
+
+                        // Calculate aspect ratio
+                        const aspectRatio = rect.width / rect.height;
+
+                        // Filter based on aspect ratio (speech bubbles are usually not too elongated)
+                        if (aspectRatio < 0.2 || aspectRatio > 5) {
+                            continue;
+                        }
+
+                        // Calculate solidity (area / convex hull area)
+                        const hull = new cv.Mat();
+                        cv.convexHull(contour, hull);
+                        const hullArea = cv.contourArea(hull);
+                        const solidity = area / hullArea;
+                        hull.delete();
+
+                        // Speech bubbles usually have high solidity
+                        if (solidity < 0.7) {
+                            continue;
+                        }
+
+                        // Get the contour perimeter
+                        const perimeter = cv.arcLength(contour, true);
+
+                        // Approximate the contour to simplify it
+                        const approx = new cv.Mat();
+                        cv.approxPolyDP(
+                            contour,
+                            approx,
+                            0.02 * perimeter,
+                            true
+                        );
+
+                        // Speech bubbles usually have a reasonable number of vertices
+                        if (approx.rows < 4 || approx.rows > 20) {
+                            approx.delete();
+                            continue;
+                        }
+
+                        // Calculate circularity (4π × area / perimeter²)
+                        const circularity =
+                            (4 * Math.PI * area) / (perimeter * perimeter);
+
+                        // Speech bubbles are often somewhat circular
+                        if (circularity < 0.4) {
+                            approx.delete();
+                            continue;
+                        }
+
+                        // This is likely a speech bubble
+                        // Convert OpenCV rect to our format
+                        const bubbleRect = {
+                            left: imgRect.left + rect.x,
+                            top: imgRect.top + rect.y,
+                            width: rect.width,
+                            height: rect.height,
+                        };
+
+                        // Create a bubble object
+                        const bubble = {
+                            id: `bubble-${imageIndex}-${i}`,
+                            imgElement: img,
+                            rect: bubbleRect,
+                            text: "", // Will be filled with OCR text
+                        };
+
+                        // Extract text from the bubble using canvas
+                        const bubbleCanvas = document.createElement("canvas");
+                        const bubbleCtx = bubbleCanvas.getContext("2d");
+                        bubbleCanvas.width = rect.width;
+                        bubbleCanvas.height = rect.height;
+                        bubbleCtx.drawImage(
+                            img,
+                            rect.x,
+                            rect.y,
+                            rect.width,
+                            rect.height,
+                            0,
+                            0,
+                            rect.width,
+                            rect.height
+                        );
+
+                        // For now, use placeholder text with character names for testing
+                        // In a real implementation, we would use Tesseract.js to extract text
+                        bubble.text = generateSampleText(imageIndex, i);
+
+                        // Add to bubbles array
+                        bubbles.push(bubble);
+
+                        approx.delete();
+                    }
+                } finally {
+                    // Clean up OpenCV resources
+                    src.delete();
+                    gray.delete();
+                    blur.delete();
+                    thresh.delete();
+                    hierarchy.delete();
+                    contours.delete();
+                }
+            } catch (error) {
+                console.error(
+                    `Error detecting bubbles with OpenCV: ${error.message}`
+                );
+                // Fall back to mock bubbles if OpenCV detection fails
+                const mockBubbles = createMockBubbles(img, imageIndex);
+                for (const bubble of mockBubbles) {
+                    bubble.text = generateSampleText(
+                        imageIndex,
+                        bubbles.length
+                    );
                     bubbles.push(bubble);
-                } catch (error) {
-                    console.error("Error extracting text from bubble:", error);
                 }
             }
 
@@ -262,6 +624,68 @@ async function processImage(imageIndex) {
             resolve([]);
         }
     });
+}
+
+/**
+ * Generate sample text with character names for testing
+ * @param {number} imageIndex - Index of the image
+ * @param {number} bubbleIndex - Index of the bubble
+ * @returns {string} - Sample text with character name
+ */
+function generateSampleText(imageIndex, bubbleIndex) {
+    // Define some character names
+    const characters = [
+        "Alice",
+        "Bob",
+        "Charlie",
+        "Diana",
+        "Ethan",
+        "Fiona",
+        "George",
+        "Hannah",
+    ];
+
+    // Define some sample dialogues
+    const dialogues = [
+        "Hey there! What's going on?",
+        "I can't believe this is happening!",
+        "We need to find a way out of here.",
+        "Did you see that? It was amazing!",
+        "I've been waiting for this moment.",
+        "This doesn't look good...",
+        "Follow me, I know the way!",
+        "Are you sure about this?",
+        "I think we should try a different approach.",
+        "Let's stick together, it's safer that way.",
+        "I wonder what's behind that door.",
+        "We've been walking in circles for hours!",
+        "Look at the sky, something's happening!",
+        "I've never seen anything like this before.",
+        "Do you hear that strange noise?",
+    ];
+
+    // Select a character based on the bubble index
+    // This ensures the same bubble position always gets the same character
+    const characterIndex = (imageIndex + bubbleIndex) % characters.length;
+    const character = characters[characterIndex];
+
+    // Select a dialogue based on the bubble and image indices
+    const dialogueIndex = (imageIndex * 3 + bubbleIndex) % dialogues.length;
+    const dialogue = dialogues[dialogueIndex];
+
+    // Format patterns (alternate between different formats)
+    const format = (imageIndex + bubbleIndex) % 3;
+
+    if (format === 0) {
+        // Format: "Character: Text"
+        return `${character}: ${dialogue}`;
+    } else if (format === 1) {
+        // Format: "[Character] Text"
+        return `[${character}] ${dialogue}`;
+    } else {
+        // Format: "Character (thinking): Text"
+        return `${character} (thinking): ${dialogue}`;
+    }
 }
 
 /**
@@ -283,17 +707,6 @@ function createMockBubbles(img, imgIndex) {
         const left = imgRect.left + img.width * (0.1 + Math.random() * 0.6);
         const top = imgRect.top + img.height * (0.1 + i * 0.3);
 
-        // Mock text for demonstration
-        const mockTexts = [
-            "Hey there! What's going on?",
-            "I can't believe this is happening!",
-            "We need to find a way out of here.",
-            "Did you see that? It was amazing!",
-            "I've been waiting for this moment.",
-            "This doesn't look good...",
-            "Follow me, I know the way!",
-        ];
-
         mockBubbles.push({
             id: `bubble-${imgIndex}-${i}`,
             imgElement: img,
@@ -303,7 +716,7 @@ function createMockBubbles(img, imgIndex) {
                 width: bubbleWidth,
                 height: bubbleHeight,
             },
-            mockText: mockTexts[Math.floor(Math.random() * mockTexts.length)],
+            // We'll generate the text later
         });
     }
 
@@ -391,6 +804,143 @@ async function playVoiceover(bubbles, settings) {
 }
 
 /**
+ * Detect character from bubble text
+ * @param {string} text - The text to analyze
+ * @returns {string|null} - The detected character name or null if none detected
+ */
+function detectCharacter(text) {
+    if (!text) return null;
+
+    // Common patterns for character speech in comics
+    // Pattern 1: "Character: Text"
+    const colonPattern = /^\s*([A-Za-z0-9\s]+)\s*:\s*(.+)/;
+    const colonMatch = text.match(colonPattern);
+    if (colonMatch && colonMatch[1]) {
+        return colonMatch[1].trim();
+    }
+
+    // Pattern 2: "[Character] Text"
+    const bracketPattern = /^\s*\[([A-Za-z0-9\s]+)\]\s*(.+)/;
+    const bracketMatch = text.match(bracketPattern);
+    if (bracketMatch && bracketMatch[1]) {
+        return bracketMatch[1].trim();
+    }
+
+    // Pattern 3: "Character (thinking/speaking): Text"
+    const parenthesisPattern = /^\s*([A-Za-z0-9\s]+)\s*\([^)]*\)\s*:\s*(.+)/;
+    const parenthesisMatch = text.match(parenthesisPattern);
+    if (parenthesisMatch && parenthesisMatch[1]) {
+        return parenthesisMatch[1].trim();
+    }
+
+    return null;
+}
+
+/**
+ * Get appropriate voice for a character
+ * @param {string} character - Character name
+ * @param {Object} settings - Voice settings
+ * @returns {SpeechSynthesisVoice|null} - The voice to use
+ */
+function getVoiceForCharacter(character, settings) {
+    // If no character detected or no voices available, return null
+    if (!character || availableVoices.length === 0) return null;
+
+    // Check if we already have a voice assigned to this character
+    if (characterVoiceMap[character]) {
+        const savedVoice = availableVoices.find(
+            (v) => v.name === characterVoiceMap[character]
+        );
+        if (savedVoice) return savedVoice;
+    }
+
+    // Check if there's a voice specified in settings
+    if (settings?.characterVoices && settings.characterVoices[character]) {
+        const settingsVoice = availableVoices.find(
+            (v) => v.name === settings.characterVoices[character]
+        );
+        if (settingsVoice) {
+            // Save this voice assignment for future use
+            characterVoiceMap[character] = settingsVoice.name;
+            return settingsVoice;
+        }
+    }
+
+    // If no specific voice found, assign one based on character name
+    // This ensures the same character always gets the same voice
+    const characterHash = character.split("").reduce((hash, char) => {
+        return char.charCodeAt(0) + ((hash << 5) - hash);
+    }, 0);
+
+    // Use the hash to select a voice
+    const voiceIndex = Math.abs(characterHash) % availableVoices.length;
+    const selectedVoice = availableVoices[voiceIndex];
+
+    // Save this voice assignment for future use
+    characterVoiceMap[character] = selectedVoice.name;
+
+    return selectedVoice;
+}
+
+/**
+ * Process text for better speech synthesis
+ * @param {string} text - The text to process
+ * @returns {string} - The processed text
+ */
+function processTextForSpeech(text) {
+    if (!text) return "";
+
+    // Remove character name patterns
+    text = text.replace(/^\s*[A-Za-z0-9\s]+\s*:\s*/, "");
+    text = text.replace(/^\s*\[[A-Za-z0-9\s]+\]\s*/, "");
+    text = text.replace(/^\s*[A-Za-z0-9\s]+\s*\([^)]*\)\s*:\s*/, "");
+
+    // Replace common abbreviations
+    const abbreviations = {
+        "don't": "dont",
+        "won't": "wont",
+        "can't": "cant",
+        "I'm": "Im",
+        "I'll": "Ill",
+        "you're": "youre",
+        "they're": "theyre",
+        "we're": "were",
+        "he's": "hes",
+        "she's": "shes",
+        "it's": "its",
+        "that's": "thats",
+        "what's": "whats",
+        "let's": "lets",
+        "who's": "whos",
+        "how's": "hows",
+        "where's": "wheres",
+        "when's": "whens",
+        "why's": "whys",
+        "would've": "wouldve",
+        "should've": "shouldve",
+        "could've": "couldve",
+        "might've": "mightve",
+        "must've": "mustve",
+    };
+
+    // Replace abbreviations
+    for (const [abbr, expanded] of Object.entries(abbreviations)) {
+        text = text.replace(new RegExp(abbr, "gi"), expanded);
+    }
+
+    // Add pauses for punctuation
+    text = text.replace(/\.\s/g, ". ");
+    text = text.replace(/!\s/g, "! ");
+    text = text.replace(/\?\s/g, "? ");
+    text = text.replace(/,\s/g, ", ");
+
+    // Remove multiple spaces
+    text = text.replace(/\s+/g, " ").trim();
+
+    return text;
+}
+
+/**
  * Speak the next bubble in the sequence
  */
 function speakNextBubble(settings) {
@@ -404,40 +954,37 @@ function speakNextBubble(settings) {
     // Highlight the current bubble
     highlightCurrentBubble(bubble.id);
 
+    // Detect character from text
+    const character = detectCharacter(bubble.text);
+    console.log(`Detected character: ${character || "Unknown"}`);
+
+    // Process text for better speech
+    const processedText = processTextForSpeech(bubble.text);
+
     // Create speech utterance
-    utterance = new SpeechSynthesisUtterance(bubble.text);
+    utterance = new SpeechSynthesisUtterance(processedText);
 
     // Apply settings
     utterance.volume = settings?.volume || 1.0;
     utterance.rate = settings?.rate || 1.0;
     utterance.pitch = settings?.pitch || 1.0;
 
-    // Get available voices
-    const voices = speechSynthesis.getVoices();
-
-    // Try to find a character-specific voice
-    let characterVoice = null;
-    if (settings?.characterVoices) {
-        // In a real implementation, we would detect characters based on text patterns
-        // For now, we'll use a random voice for demonstration
-        const voiceKeys = Object.keys(settings.characterVoices);
-        if (voiceKeys.length > 0) {
-            const randomVoiceKey =
-                voiceKeys[currentSpeechIndex % voiceKeys.length];
-            characterVoice = settings.characterVoices[randomVoiceKey];
+    // Get voice for this character
+    if (character) {
+        const characterVoice = getVoiceForCharacter(character, settings);
+        if (characterVoice) {
+            utterance.voice = characterVoice;
+            console.log(
+                `Using voice ${characterVoice.name} for character ${character}`
+            );
         }
-    }
-
-    // Set the voice
-    if (characterVoice && voices.length > 0) {
-        const voice = voices.find((v) => v.name === characterVoice);
-        if (voice) {
-            utterance.voice = voice;
-        }
-    } else if (settings?.defaultVoice && voices.length > 0) {
-        const voice = voices.find((v) => v.name === settings.defaultVoice);
-        if (voice) {
-            utterance.voice = voice;
+    } else if (settings?.defaultVoice && availableVoices.length > 0) {
+        // Use default voice if no character detected
+        const defaultVoice = availableVoices.find(
+            (v) => v.name === settings.defaultVoice
+        );
+        if (defaultVoice) {
+            utterance.voice = defaultVoice;
         }
     }
 

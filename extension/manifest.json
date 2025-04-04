@@ -24,15 +24,31 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["lib/opencv.js", "lib/tesseract.min.js", "content/content.js"],
-      "css": ["content/content.css"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "lib/opencv.js",
+        "lib/tesseract.min.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/*", "popup/images/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "lib/*",
+        "popup/images/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
 }
